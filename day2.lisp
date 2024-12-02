@@ -24,15 +24,18 @@
    (or (apply #'> report)
        (apply #'< report))
    (loop for (a b) on report while b
-         for diff = (abs (- a b))
-         always (and (<= 1 diff)
-                     (>= 3 diff)))))
+         always (<= 1 (abs (- a b)) 3))))
+
+(defun dampened-report-safe-p (report)
+  (loop for i from 0
+        for level in report
+        thereis (report-safe-p (remove level report :start i :count 1))))
 
 (defun p1 (report-list)
   (count-if #'report-safe-p report-list)) 
 
-(defun p2 ()
-  )
+(defun p2 (report-list)
+  (count-if #'dampened-report-safe-p report-list))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
@@ -41,7 +44,7 @@
     (fresh-line)
     (princ "part 1: ")
     (princ (p1 data))
-    ;; (fresh-line)
-    ;; (princ "part 2: ")
-    ;; (princ (p2 data))
+    (fresh-line)
+    (princ "part 2: ")
+    (princ (p2 data))
     ))
