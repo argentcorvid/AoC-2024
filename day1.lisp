@@ -13,20 +13,30 @@
 3   9
 3   3"))
 
-(defun parse-input (lines)
+(defun parse-input-line (line)
   (let ((str:*omit-nulls* t))
-    (loop for l in lines
-          for (lnum rnum) in (mapcar #'parse-integer (str:split #\space l))
-          collect lnum into left
-          collect rnum into right
-          finally (return (list (sort left  #'<)
-                                (sort right #'<))))))
+    (mapcar #'parse-integer (str:split #\space line))))
 
-(defun p1 ()
-  ) 
+(defun parse-input (lines)
+  (mapcar #'parse-input-line lines))
 
-(defun p2 ()
-  )
+(defun transpose-2d (lst)
+  (apply #'mapcar #'list lst))
+
+(defun p1 (data-in)
+  (apply #'+ (mapcar (lambda (l)
+                       (abs (apply #'- l)))
+                     (transpose-2d (mapcar (lambda (i)
+                                      (sort i #'<))
+                                    (transpose-2d data-in))))))
+
+(defun p2 (data-in)
+  (let* ((td (transpose-2d data-in))
+         (left (first td))
+         (right (second td)))
+    (reduce #'+ (mapcar (lambda (itm)
+                          (* itm (count itm right)))
+                        left))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
