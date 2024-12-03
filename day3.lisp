@@ -32,6 +32,17 @@
       
         (push pair pairs-to-multiply)))))
 
+(defun regex-muls (in-string)
+  (let ((mul-scanner (ppcre:create-scanner "(?<=mul\\()([0-9]{1,3}),([0-9]{1,3})(?=\\))"))
+        pairs)
+    (ppcre:do-register-groups (a b)
+        (mul-scanner in-string pairs)
+      (push (mapcar #'parse-integer (list a b)) pairs))))
+
+(defun p1-re (filename)
+  (loop for pair in (regex-muls (uiop:read-file-string filename))
+        summing (apply #'* pair)))
+
 
 (defun p1 (input-stream)
   (loop for pair in (read-muls input-stream)
@@ -46,6 +57,9 @@
     (princ "part 1: ")
     (with-open-file (data infile-name :direction :input)
       (princ (p1 data))) ; 162633034 too low, 168819032 too high
+    (fresh-line)
+    (princ "part 1 with regex:")
+    (princ  (p1-re infile-name))
     ;; (fresh-line)
     ;; (princ "part 2: ")
     ;; (princ (p2 data))
