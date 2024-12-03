@@ -15,27 +15,27 @@
     (do ((ch (read-char input-stream nil) (read-char input-stream nil))
          (pairs-to-multiply (list))
          pair)
-        ((null ch) pairs-to-multiply)
+        ((null ch) (nreverse pairs-to-multiply))
       (when (and (char= ch #\m)
                  (string= "ul("
                           (loop repeat 3 collecting (read-char input-stream nil) into str
                                 finally (return (coerce str 'string))))
                  (setf pair (loop
-                              for ch = (read-char input-stream nil)
-                              for i upto 6             ; max 7 characters
+                              for ch = (read-char input-stream nil nil)
+                              for i upto 7             ; max 8 characters, including closing )
                               until (char= ch #\))     ; only until )
                               always (member ch both)  ; abort with nil if not number, comma, or )
                               collect ch into bin
-                              finally (return (mapcar #'parse-integer (str:split #\, (coerce bin 'string)))))))
+                              finally (return (mapcar #'(lambda (itm)
+                                                          (parse-integer itm :junk-allowed nil))
+                                                      (str:split #\, (coerce bin 'string)))))))
       
         (push pair pairs-to-multiply)))))
 
 
 (defun p1 (input-stream)
-  (reduce #'+
-          (mapcar #'(lambda (s)
-                      (apply #'* s))
-                  (read-muls input-stream))))
+  (loop for pair in (read-muls input-stream)
+        summing (apply #'* pair)))
 
 (defun p2 ()
   )
@@ -45,7 +45,7 @@
     (fresh-line)
     (princ "part 1: ")
     (with-open-file (data infile-name :direction :input)
-      (princ (p1 data)))
+      (princ (p1 data))) ; 162633034 too low, 168819032 too high
     ;; (fresh-line)
     ;; (princ "part 2: ")
     ;; (princ (p2 data))
