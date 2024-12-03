@@ -21,18 +21,21 @@
                           (loop repeat 3 collecting (read-char input-stream nil) into str
                                 finally (return (coerce str 'string))))
                  (setf pair (loop
-                              for ch = (read-character input-stream nil)
+                              for ch = (read-char input-stream nil)
                               for i upto 6             ; max 7 characters
                               until (char= ch #\))     ; only until )
                               always (member ch both)  ; abort with nil if not number, comma, or )
-                              
-                                  )))
+                              collect ch into bin
+                              finally (return (mapcar #'parse-integer (str:split #\, (coerce bin 'string)))))))
       
         (push pair pairs-to-multiply)))))
 
 
-(defun p1 ()
-  ) 
+(defun p1 (input-stream)
+  (reduce #'+
+          (mapcar #'(lambda (s)
+                      (apply #'* s))
+                  (read-muls input-stream))))
 
 (defun p2 ()
   )
@@ -41,7 +44,8 @@
   (let* ((infile-name (format nil +input-name-template+ +day-number+)))
     (fresh-line)
     (princ "part 1: ")
-    (princ (p1 data))
+    (with-open-file (data infile-name :direction :input)
+      (princ (p1 data)))
     ;; (fresh-line)
     ;; (princ "part 2: ")
     ;; (princ (p2 data))
