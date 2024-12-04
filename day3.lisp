@@ -22,13 +22,14 @@
                                 finally (return (coerce str 'string))))
                  (setf pair (loop
                               for ch = (read-char input-stream nil nil)
-                              for i upto 7             ; max 8 characters, including closing )
+                              for i below 8             ; max 8 characters, including closing )
                               until (char= ch #\))     ; only until )
-                              always (member ch both)  ; abort with nil if not number, comma, or )
+                               always (member ch both)  ; abort with nil if not number, comma, or )
                               collect ch into bin
-                              finally (return (mapcar #'(lambda (itm)
-                                                          (parse-integer itm :junk-allowed nil))
-                                                      (str:split #\, (coerce bin 'string)))))))
+                              finally (if (member #\, bin :test 'equal)
+                                          (return (mapcar #'parse-integer
+                                                          (str:split #\, (coerce bin 'string))))
+                                          nil))))
       
         (push pair pairs-to-multiply)))))
 
@@ -37,7 +38,7 @@
         pairs)
     (ppcre:do-register-groups (a b)
         (mul-scanner in-string pairs)
-      (push (mapcar #'parse-integer (list a b)) pairs))))
+      (push (list (parse-integer a) (parse-integer b)) pairs))))
 
 (defun p1-re (filename)
   (loop for pair in (regex-muls (uiop:read-file-string filename))
