@@ -1,7 +1,7 @@
 ;;;day3
 
 (defparameter +day-number+ 3)
-(defparameter +working-dir+ (uiop:truenamize "~/aoc-2024/"))
+(defparameter +working-dir+ (uiop:truenamize "~/../aoc-2024/"))
 (defparameter +input-name-template+ "2024d~dinput.txt")
 
 (defparameter +test-input+
@@ -22,22 +22,22 @@
                                 finally (return (coerce str 'string))))
                  (setf pair (loop
                               for ch = (read-char input-stream nil nil)
-                              for i below 8             ; max 8 characters, including closing )
+                              for i from 1 to 8             ; max 8 characters, including closing )
                               until (char= ch #\))     ; only until )
                                always (member ch both)  ; abort with nil if not number, comma, or )
                               collect ch into bin
-                              finally (if (member #\, bin :test 'equal)
+                              finally (if (member #\, bin)
                                           (return (mapcar #'parse-integer
                                                           (str:split #\, (coerce bin 'string))))
-                                          nil))))
-      
+                                          (return nil)))))
+        (if (/= 2 (length pair)) (break))
         (push pair pairs-to-multiply)))))
 
-(defun regex-muls (in-string)
+(defun regex-muls (in-string &key (start 0) (end (length in-string)))
   (let ((mul-scanner (ppcre:create-scanner "(?<=mul\\()([0-9]{1,3}),([0-9]{1,3})(?=\\))"))
         pairs)
     (ppcre:do-register-groups (a b)
-        (mul-scanner in-string pairs)
+        (mul-scanner in-string (nreverse pairs) :start start :end end)
       (push (list (parse-integer a) (parse-integer b)) pairs))))
 
 (defun p1-re (filename)
@@ -49,8 +49,23 @@
   (loop for pair in (read-muls input-stream)
         summing (apply #'* pair)))
 
-(defun p2 ()
-  )
+(defun p2-re (filename)
+  (declare (optimize (speed 0) (debug 3)))
+  (let (do-locs
+         dont-locs
+         (do-re (ppcre:create-scanner "do\\(\\)")) ;there are multiple do's which cause duplication of input with
+         (dont-re (ppcre:create-scanner "don\\'t\\(\\)")) ; this method, need to only track first one since the last
+         (input-string (uiop:read-file-string filename))) ; don't
+    (setf do-locs (append (list 0 0) (ppcre:all-matches do-re input-string)))
+    (setf dont-locs (append (ppcre:all-matches dont-re input-string) (list #1=(length input-string) #1#)))
+    (break)
+    (labels ((sum-of-prods (lst)
+               (reduce #'+ (mapcar #'(lambda (pair)
+                                       (apply #'* pair))
+                                   lst))))
+      (loop for (a start) on do-locs by #'cddr
+            for (end d) on dont-locs by #'cddr
+            summing (sum-of-prods (regex-muls input-string :start start :end end))))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+)))
@@ -60,8 +75,11 @@
       (princ (p1 data))) ; 162633034 too low, 168819032 too high
     (fresh-line)
     (princ "part 1 with regex:")
-    (princ  (p1-re infile-name))
+    (princ  (p1-re infile-name)) ; 1669055464 correct
     ;; (fresh-line)
     ;; (princ "part 2: ")
     ;; (princ (p2 data))
+    (fresh-line)
+    (princ "part 2 with regex:")
+    (princ (p2-re infile-name))
     ))
