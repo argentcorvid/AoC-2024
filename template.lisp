@@ -1,7 +1,6 @@
 ;;;dayx
 
 (defparameter +day-number+ x)
-(defparameter +working-dir+ (uiop:truenamize "~/aoc-2024/"))
 (defparameter +input-name-template+ "2024d~dinput.txt")
 
 (defparameter +test-input+
@@ -25,4 +24,5 @@
     (princ (p1 data))
     ;; (fresh-line)
     ;; (princ "part 2: ")
-    ;; (princ (p2 data))))
+    ;; (princ (p2 data))
+    ))
