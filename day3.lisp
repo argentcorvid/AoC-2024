@@ -52,19 +52,17 @@
 (defun p2-re (filename)
   (declare (optimize (speed 0) (debug 3)))
   (let (do-locs
-         dont-locs
-         (do-re (ppcre:create-scanner "do\\(\\)")) ;there are multiple do's which cause duplication of input with
-         (dont-re (ppcre:create-scanner "don\\'t\\(\\)")) ; this method, need to only track first one since the last
-         (input-string (uiop:read-file-string filename))) ; don't
-    (setf do-locs (append (list 0 0) (ppcre:all-matches do-re input-string)))
-    (setf dont-locs (append (ppcre:all-matches dont-re input-string) (list #1=(length input-string) #1#)))
-    (break)
+         (do-re (ppcre:create-scanner "(?s)do\\(\\).+?(?:don\\'t\\(\\))")) 
+         (input-string (uiop:read-file-string filename))) 
+    (setf do-locs (rplaca (ppcre:all-matches do-re input-string) 0))
+    ;; (fresh-line)
+    ;; (princ do-locs)
+    ;; (break)
     (labels ((sum-of-prods (lst)
                (reduce #'+ (mapcar #'(lambda (pair)
                                        (apply #'* pair))
                                    lst))))
-      (loop for (a start) on do-locs by #'cddr
-            for (end d) on dont-locs by #'cddr
+      (loop for (start end) on do-locs by #'cddr
             summing (sum-of-prods (regex-muls input-string :start start :end end))))))
 
 (defun main ()
@@ -80,6 +78,6 @@
     ;; (princ "part 2: ")
     ;; (princ (p2 data))
     (fresh-line)
-    (princ "part 2 with regex:")
+    (princ "part 2 with regex:") ; 52259815 too low
     (princ (p2-re infile-name))
     ))
