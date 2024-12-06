@@ -3,14 +3,7 @@
 (defparameter +day-number+ 4)
 (defparameter +input-name-template+ "2024d~dinput.txt")
 
-(defparameter +test-input-1+
-"..X...
-.SAMX.
-.A..A.
-XMAS.S
-.X....")
-
-(defparameter +test-input-2+
+(defparameter +test-input+
 "MMMSXXMASM
 MSAMXMSMSA
 AMXSXMAAMM
