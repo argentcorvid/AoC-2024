@@ -28,34 +28,43 @@ MXMXAXMASX") ;; XMAS 18 times f,b,u,d, +diag
 
 (defparameter *xmas* "XMAS")
 
-(defun get-x-locs (in-lines)
+(defun get-x-locs (in-lines ch)
   (loop for r in in-lines
         for row from 0
         nconcing (loop for c across r
                        for col from 0
-                       when (char= #\X c)
+                       when (char= ch c)
                          collect (list row col))))
 
-(defun p1 (data-lines)
-  (let ((x-locs (get-x-locs data-lines))
+(defun p1 (data-lines &optional (ch #\X))
+  (declare (optimize (debug 3)))
+  (let ((x-locs (get-x-locs data-lines ch))
         (count 0))
     (dolist (x-posn x-locs count)
       (dolist (dir *look-increments*)
         (handler-case
-            (when (loop for ch across *xmas*
+            (when (loop for cand across *xmas*
                         for i from 0
                         for row-offset = (+ (first x-posn) (* i (first dir)))
                         for col-offset = (+ (second x-posn) (* i (second dir)))
-                        always (char= ch (elt (elt data-lines row-offset) col-offset)))
+                        always (char= cand (elt (elt data-lines row-offset) col-offset)))
               (incf count))
           (type-error () #\.)))))) ; return . if indexing off the end of the grid, negative or positive
 
-(defun p2 ()
-  )
+(defun p2 (data-lines)
+  (let ((*xmas* "MAS")
+        (*look-increments* (remove-if (lambda (itm)
+                                        (member 0 itm :test #'=))
+                                      *look-increments*)))
+    (break)
+    (p1 data-lines #\M)))
 
 (defun test ()
-  (print "test p1:")
-  (print (p1 (str:split #\newline +test-input+ :omit-nulls t))))
+  (let ((lines (str:split #\newline +test-input+ :omit-nulls t)))
+    (print "test p1:")
+    (print (p1 lines))
+    (print "test p2:")
+    (print (p2 lines))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
@@ -64,7 +73,7 @@ MXMXAXMASX") ;; XMAS 18 times f,b,u,d, +diag
     (fresh-line)
     (princ "part 1: ")
     (princ (p1 data))
-    ;; (fresh-line)
-    ;; (princ "part 2: ")
-    ;; (princ (p2 data))
+    (fresh-line)
+    (princ "part 2: ")
+    (princ (p2 data))
     ))
