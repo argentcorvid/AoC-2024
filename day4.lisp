@@ -55,8 +55,8 @@ MXMXAXMASX") ;; XMAS 18 times f,b,u,d, +diag
   (declare (optimize (debug 3)))
   (let ((a-locs (get-x-locs data-lines #\A))
         (look-increments (list (list 1 1) (list -1 1)))
-        (row-len (length (first data-lines)))
-        (col-len (length data-lines)))
+        (row-len (1- (length (first data-lines))))
+        (col-len (1- (length data-lines))))
     (loop for a-posn in a-locs
           counting (= 2 (count-if (lambda (itm)
                                     (or (string= "MAS" itm) 
@@ -65,8 +65,8 @@ MXMXAXMASX") ;; XMAS 18 times f,b,u,d, +diag
                                         collect (loop ;for i from 0
                                                       ;this part is wrong
                                                       for j from -1 upto 1 ; index into "MAS"
-                                                      for row-offset = (+ (* j (first dir)) (first a-posn))
-                                                      for col-offset = (+ (* j (second dir)) (second a-posn))
+                                                      for row-offset = (* j (first dir)) 
+                                                      for col-offset = (* j (second dir))
                                                       for look-row = (+ (first a-posn) row-offset)
                                                       for look-col = (+ (second a-posn) col-offset)
                                                       if (and (<= 0 look-row row-len)
