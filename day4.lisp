@@ -52,12 +52,30 @@ MXMXAXMASX") ;; XMAS 18 times f,b,u,d, +diag
           (type-error () #\.)))))) ; return . if indexing off the end of the grid, negative or positive
 
 (defun p2 (data-lines)
-  (let ((*xmas* "MAS")
-        (*look-increments* (remove-if (lambda (itm)
-                                        (member 0 itm :test #'=))
-                                      *look-increments*)))
-    (break)
-    (p1 data-lines #\M)))
+  (declare (optimize (debug 3)))
+  (let ((a-locs (get-x-locs data-lines #\A))
+        (look-increments (list (list 1 1) (list -1 1)))
+        (row-len (length (first data-lines)))
+        (col-len (length data-lines)))
+    (loop for a-posn in a-locs
+          counting (= 2 (count-if (lambda (itm)
+                                    (or (string= "MAS" itm) 
+                                        (string= "SAM" itm)))
+                                  (loop for dir in look-increments
+                                        collect (loop ;for i from 0
+                                                      ;this part is wrong
+                                                      for j from -1 upto 1 ; index into "MAS"
+                                                      for row-offset = (+ (* j (first dir)) (first a-posn))
+                                                      for col-offset = (+ (* j (second dir)) (second a-posn))
+                                                      for look-row = (+ (first a-posn) row-offset)
+                                                      for look-col = (+ (second a-posn) col-offset)
+                                                      if (and (<= 0 look-row row-len)
+                                                              (<= 0 look-col col-len))
+                                                        collect (elt (elt data-lines look-row) look-col) into word
+                                                      else
+                                                        collect #\. into word
+                                                      end
+                                                      finally (return (coerce word 'string)))))))))
 
 (defun test ()
   (let ((lines (str:split #\newline +test-input+ :omit-nulls t)))
