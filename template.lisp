@@ -15,6 +15,11 @@
 (defun p2 ()
   )
 
+(defun test ()
+  (fresh-line)
+  (princ "part 1: ")
+  (princ (p1 +test-input+)))
+
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
          (input-lines (uiop:read-file-lines infile-name))
