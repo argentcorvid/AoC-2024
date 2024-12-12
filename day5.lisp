@@ -34,30 +34,36 @@
 97,13,75,29,47")
 
 (defun parse-input (input-string)
-  (loop for ss in (str:split #\newline input-string)
-        if (find #\| ss)
-          collect ss into rules
-        if (find #\, ss)
-          collect ss into updates
-        finally (return (values rules updates))))
+  (let ((rules-hash (make-hash-table :test 'equal))
+        (update-list (list)))
+    (multiple-value-bind (rules updates)
+        (loop for ss in (str:split #\newline input-string)
+              if (find #\| ss)
+                collect ss into rules
+              if (find #\, ss)
+                collect ss into updates
+              finally (return (values rules updates)))
+      (dolist (rule rules)
+        (destructuring-bind (before after) 
+            (mapcar (lambda (s)
+                      (parse-integer s))
+                    (str:split #\| rule))
+          (push after (gethash before rules-hash (list)))))
+      (dolist (update updates)
+        (push (str:split #\, update) update-list)))
+    (values rules-hash update-list)))
 
 (defun p1 (rules updates)
-  (let ((rules-hash (make-hash-table :test 'equal)))
-    (dolist (rule rules)
-      (destructuring-bind (before after) 
-          (mapcar (lambda (s)
-                    (parse-integer s))
-                  (str:split #\| rule))
-        (push after (gethash before rules-hash (list)))))
-    ))
+  )
 
 (defun p2 ()
   )
 
 (defun test ()
-  (fresh-line)
-  (princ "part 1: ")
-  (princ (p1 (parse-input +test-input+))))
+  (multiple-value-bind (rules updates) (parse-data +test-input+)
+    (fresh-line)
+    (princ "part 1: ")
+    (princ (p1 rules updates))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+)))
