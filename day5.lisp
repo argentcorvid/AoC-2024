@@ -33,8 +33,13 @@
 61,13,29
 97,13,75,29,47")
 
-(defun parse-input (lines)
-  )
+(defun parse-input (input-string)
+  (loop for ss in (str:split #\newline input-string)
+        if (find #\| ss)
+          collect ss into rules
+        if (find #\, ss)
+          collecr ss into updates
+        finally ()))
 
 (defun p1 ()
   ) 
