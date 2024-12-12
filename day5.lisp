@@ -38,10 +38,10 @@
         if (find #\| ss)
           collect ss into rules
         if (find #\, ss)
-          collecr ss into updates
-        finally ()))
+          collect ss into updates
+        finally (return (values rules updates))))
 
-(defun p1 ()
+(defun p1 (rules updates)
   ) 
 
 (defun p2 ()
@@ -53,13 +53,12 @@
   (princ (p1 +test-input+)))
 
 (defun main ()
-  (let* ((infile-name (format nil +input-name-template+ +day-number+))
-         (input-lines (uiop:read-file-lines infile-name))
-         (data (parse-input input-lines)))
-    (fresh-line)
-    (princ "part 1: ")
-    (princ (p1 data))
-    ;; (fresh-line)
-    ;; (princ "part 2: ")
-    ;; (princ (p2 data))
-    ))
+  (let* ((infile-name (format nil +input-name-template+ +day-number+)))
+    (multiple-value-bind (rules updates) (parse-data (uiop:read-file-string infile-name))
+      (fresh-line)
+      (princ "part 1: ")
+      (princ (p1 rules updates))
+     ;; (fresh-line)
+     ;; (princ "part 2: ")
+     ;; (princ (p2 data))
+     )))
