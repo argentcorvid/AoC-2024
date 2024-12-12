@@ -42,7 +42,14 @@
         finally (return (values rules updates))))
 
 (defun p1 (rules updates)
-  ) 
+  (let ((rules-hash (make-hash-table :test 'equal)))
+    (dolist (rule rules)
+      (destructuring-bind (before after) 
+          (mapcar (lambda (s)
+                    (parse-integer s))
+                  (str:split #\| rule))
+        (push after (gethash before rules-hash (list)))))
+    ))
 
 (defun p2 ()
   )
@@ -50,7 +57,7 @@
 (defun test ()
   (fresh-line)
   (princ "part 1: ")
-  (princ (p1 +test-input+)))
+  (princ (p1 (parse-input +test-input+))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+)))
