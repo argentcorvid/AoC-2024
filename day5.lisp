@@ -40,8 +40,8 @@
         (loop for ss in (str:split #\newline input-string)
               if (find #\| ss)
                 collect ss into rules
-              if (find #\, ss)
-                collect ss into updates
+              else if (find #\, ss)
+                     collect ss into updates
               finally (return (values rules updates)))
       (dolist (rule rules)
         (destructuring-bind (before after) 
@@ -50,24 +50,36 @@
                     (str:split #\| rule))
           (push after (gethash before rules-hash (list)))))
       (dolist (update updates)
-        (push (str:split #\, update) update-list)))
+        (push (mapcar #'parse-integer (str:split #\, update)) update-list)))
     (values rules-hash update-list)))
 
+(defun middle-page (page-update-list)
+  ;; i hope all updates are of odd length
+  (when (evenp (length page-update-list))
+    (warn "even-length update encountered: ~a" page-update-list))
+  (nth (floor (/ (length page-update-list) 2)) page-update-list))
+
+(defun valid-update (rules update)
+  (loop for (page . following) on update
+        always (subsetp following (gethash page rules nil))))
+
 (defun p1 (rules updates)
-  )
+  (loop for update in updates
+        if (valid-update rules update)
+          sum (middle-page update)))
 
 (defun p2 ()
   )
 
 (defun test ()
-  (multiple-value-bind (rules updates) (parse-data +test-input+)
+  (multiple-value-bind (rules updates) (parse-input +test-input+)
     (fresh-line)
     (princ "part 1: ")
     (princ (p1 rules updates))))
 
 (defun main ()
   (let* ((infile-name (format nil +input-name-template+ +day-number+)))
-    (multiple-value-bind (rules updates) (parse-data (uiop:read-file-string infile-name))
+    (multiple-value-bind (rules updates) (parse-input (uiop:read-file-string infile-name))
       (fresh-line)
       (princ "part 1: ")
       (princ (p1 rules updates))
