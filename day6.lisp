@@ -20,7 +20,8 @@
   (direction 'n)
   (steps 0 :type integer)
   (visited (list (list 0 0)))
-  (bounds (list (list 0 0) (list 0 0))))
+  (bounds (list (list 0 0) (list 0 0)))
+  (obstacles (list)))
 
 (defvar *directions* (pairlis '(n      e     s     w)
                               '((-1 0) (0 1) (1 0) (0 -1))))
@@ -46,29 +47,43 @@
                (setf col -1)
                (incf line)
                (incf grid-length)
-          finally (return (values (make-guard :position guard-start
-                                              :visited (list guard-start)
-                                              :bounds (list (list -1 -1) (list grid-width grid-length)))
-                                  (nreverse obstacle-list))))))
+          finally (return (let ((min-max (list (list -1 -1) (list grid-width grid-length))))
+                            (make-guard :position guard-start
+                                        :visited (list guard-start)
+                                        :bounds 
+                                        :obstacles (nconc (fence min-max) (nreverse obstacle-list))))))))
 
-(defun p1 (guard obstacles)
-  ) 
+(defun oob? (guard)
+  (let* ((pos (guard-pos guard))
+         (bounds (guard-bounds guard))
+         (row (first pos))
+         (col (second pos)))
+    (or (= row (caar bounds))
+        (= row (caadr bounds))
+        (= col (cadar bounds))
+        (= col (cadadr bounds)))))
 
-(defun p2 (guard obstacles)
+(defun p1 (guard)
+  (loop
+    (move-guard guard (find-next-obstacle guard))
+    (when (oob? guard)                  ; out of bounds
+      (return (length (guard-visited guard)))))) 
+
+(defun p2 (guard)
   )
 
-(defun run (parts-list guard obstacles)
-  (unless (consp parts-list)
+(defun run (parts-list guard)
+  (unless (listp parts-list)
     (setf parts-list (list parts-list)))
   (dolist (part parts-list)
     (ccase part
-      (1 (format t "~&Part 1: ~a" (p1 guard obstacles)))
-      (2 (format t "~&Part 2: ~a" (p2 guard obstacles))))))
+      (1 (format t "~&Part 1: ~a" (p1 (copy-structure guard))))
+      (2 (format t "~&Part 2: ~a" (p2 (copy-structure guard)))))))
 
 (defun main (parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
          (input-string (uiop:read-file-string infile-name)))
-    (multiple-value-call #'run parts-list (parse-input input-string))))
+    (run parts-list (parse-input input-string))))
 
 (defun test (parts-list)
-  (multiple-value-call #'run parts-list (parse-input +test-data+)))
+  (run parts-list (parse-input +test-input+)))
