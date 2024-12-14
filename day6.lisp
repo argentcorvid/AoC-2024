@@ -50,8 +50,26 @@
           finally (return (let ((min-max (list (list -1 -1) (list grid-width grid-length))))
                             (make-guard :position guard-start
                                         :visited (list guard-start)
-                                        :bounds 
-                                        :obstacles (nconc (fence min-max) (nreverse obstacle-list))))))))
+                                        :bounds min-max 
+                                        :obstacles (nconc (fence min-max)
+                                                          (nreverse obstacle-list))))))))
+
+(defun fence (min-max-list) ;making it 1 square bigger will make the total 1 more than needed
+  (let ((min-row (first (first min-max-list)))
+        (min-col (second (first min-max-list)))
+        (max-row (first (second min-max-list)))
+        (max-col (second (second min-max-list))))
+    (remove-duplicates
+     (nconc
+      (mapcan (lambda (s)
+                (list (list (1- min-row)  s) (list s (1- min-col))))
+              (a:iota (+ 4 max-row)
+                      :start (1- min-row)))
+      (mapcan (lambda (s)
+                (list (list (1+ max-col) s) (list s (1+ max-row))))
+             (a:iota (+ 4 max-col)
+                      :start (1- min-col))))
+     :test 'equal)))
 
 (defun oob? (guard)
   (let* ((pos (guard-pos guard))
