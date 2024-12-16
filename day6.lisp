@@ -60,18 +60,17 @@
         (max-row (first (second min-max-list)))
         (max-col (second (second min-max-list))))
     (remove-duplicates
-     (nconc
-      (mapcan (lambda (s)
-                (list (list (1- min-row)  s) (list s (1- min-col))))
-              (a:iota (+ 4 max-row)
-                      :start (1- min-row)))
-      (mapcan (lambda (s)
-                (list (list (1+ max-col) s) (list s (1+ max-row))))
-             (a:iota (+ 4 max-col)
-                      :start (1- min-col))))
+     (nconc (mapcan (lambda (s)
+                      (list (list min-row  s) (list s min-col)))
+                    (a:iota (+ 2 max-row)
+                      :start min-row))
+            (mapcan (lambda (s)
+                      (list (list max-col s) (list s max-row)))
+                    (a:iota (+ 2 max-col)
+                            :start min-col)))
      :test 'equal)))
 
-(defun oob? (guard)
+(defun oob? (guard) ;rewrite, no longer actually goes out
   (let* ((pos (guard-pos guard))
          (bounds (guard-bounds guard))
          (row (first pos))
@@ -80,6 +79,27 @@
         (= row (caadr bounds))
         (= col (cadar bounds))
         (= col (cadadr bounds)))))
+
+(defun find-next-obstacle (guard)
+  (let* ((elf-pos (guard-position guard))
+         (elf-dir (cdr (assoc (guard-direction guard) *directions*)))
+         (candidates (remove-if-not (lambda (obs-pos)
+                                      (and (or (= (first elf-pos)
+                                                  (first obs-pos))
+                                               (= (second elf-pos)
+                                                  (second obs-pos)))
+                                           (equal (mapcar (lambda (o e)
+                                                            (signum (- o e)))
+                                                          obs-pos elf-pos)
+                                                  elf-dir)))
+                                    (guard-obstacles guard))))
+    (loop for c in candidates
+          with min-c = ;something that is far away max row,col in bounds times dir?
+          when (< (distance elf-pos c)
+                  (distance elf-pos min-c))
+            do (setf min-c c)
+          end
+          finally (return min-c))))
 
 (defun p1 (guard)
   (loop
