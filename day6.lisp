@@ -133,10 +133,10 @@
   )
 
 (defun p1 (guard)
-  (loop
-    (move-guard guard (find-next-obstacle guard))
-    (when (oob? guard)                  ; out of bounds
-      (return (1- (length (guard-visited guard))))))) 
+  (loop for x from 0 upto *maxloops*
+        until (some (a:curry #'> 0) (move-guard guard (find-next-obstacle guard)))
+        finally (return (1- (length (guard-visited guard))))))
+
 
 (defun p2 (guard)
   )
