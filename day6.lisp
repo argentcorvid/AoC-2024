@@ -87,7 +87,7 @@
 
 (defun find-next-obstacle (guard)
   (let* ((elf-pos (guard-position guard))
-         (elf-dir (cdr (assoc (guard-direction guard) *directions*)))
+         (elf-dir (a:assoc-value *directions* (guard-direction guard)))
          (candidates (remove-if-not (lambda (obs-pos)
                                       (and (or (= (first elf-pos)  ;in the same row or column
                                                   (first obs-pos))
@@ -108,7 +108,19 @@
           end
           finally (return min-c))))
 
-(defun move-guard (next-obstacle)
+(defvar *next-dir-lookup* (pairlis '(n s e w) '(e w s n)))
+
+(defun move-guard (guard next-obstacle)
+  (let* ((move-increment (a:assoc-value *directions* (guard-direction guard)))
+         (move-distance  (1- (man-dist (guard-position guard) next-obstacle)))
+         (next-dir (a:assoc-value *next-dir-lookup* (guard-direction guard)))
+         (guard-pos (guard-position guard))
+         (cells-traveled (mapcar (lambda (step)
+                                   ())
+                                 (a:iota move-distance :start 1))))
+    (incf (guard-steps guard) move-distance)
+    (setf (guard-direction guard) next-dir)
+    )
   )
 
 (defun p1 (guard)
