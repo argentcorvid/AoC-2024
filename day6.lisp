@@ -17,7 +17,8 @@
 .#..^.....
 ........#.
 #.........
-......#...")
+......#...
+")
 
 (defstruct guard
   (position (list 0 0))
@@ -44,11 +45,11 @@
             do (setf guard-start (list line col))
           when (char= cell #\newline)
             do (when (= 0 line)
-                 (setf grid-width (1- col)))
+                 (setf grid-width col))
                (setf col -1)
                (incf line)
                (incf grid-length)
-          finally (return (let ((min-max (list (list -1 -1) (list grid-width grid-length))))
+          finally (return (let ((min-max (list (list -1 -1) (list grid-width (1- grid-length))))) ; newline at end of file
                             (make-guard :position guard-start
                                         :visited (list guard-start)
                                         :bounds min-max 
@@ -134,7 +135,8 @@
 
 (defun p1 (guard)
   (loop for x from 0 upto *maxloops*
-        until (some (a:curry #'> 0) (move-guard guard (find-next-obstacle guard)))
+        until (oob? guard)
+        do (move-guard guard (find-next-obstacle guard))
         finally (return (1- (length (guard-visited guard))))))
 
 
