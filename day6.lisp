@@ -94,9 +94,11 @@
                                                   elf-dir)))
                                     (guard-obstacles guard))))
     (loop for c in candidates
-          with min-c = ;something that is far away max row,col in bounds times dir?
-          when (< (distance elf-pos c)
-                  (distance elf-pos min-c))
+          with min-c = (mapcar #'* ;something that is far away max row,col in bounds times dir?
+                               (second (guard-bounds guard))
+                               elf-dir) 
+          when (< (abs-dist elf-pos c)
+                  (abs-dist elf-pos min-c))
             do (setf min-c c)
           end
           finally (return min-c))))
