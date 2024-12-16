@@ -1,5 +1,9 @@
 ;;;day6
 
+(eval-when (:compile-toplevel :load-toplevel)
+  (ql:quickload '(str alexandria))
+  (add-package-local-nickname 'a 'alexandria))
+
 (defparameter +day-number+ 6)
 (defparameter +input-name-template+ "2024d~dinput.txt")
 
@@ -48,7 +52,7 @@
                             (make-guard :position guard-start
                                         :visited (list guard-start)
                                         :bounds min-max 
-                                        :obstacles (nconc (fence min-max)
+                                        :obstacles (nconc (fence min-max 1)
                                                           (nreverse obstacle-list))))))))
 
 (defun fence (min-max-list &optional (extra 0)) ;making it 1 square bigger will make the total 1 more than needed
@@ -69,6 +73,7 @@
      :test 'equal)))
 
 (defun oob? (guard) ;rewrite, no longer actually goes out if extra = 0
+  (declare (optimize (debug 3)))
   (let* ((pos (guard-position guard))
          (bounds (guard-bounds guard))
          (row (first pos))
@@ -115,19 +120,23 @@
          (move-distance  (1- (man-dist (guard-position guard) next-obstacle)))
          (next-dir (a:assoc-value *next-dir-lookup* (guard-direction guard)))
          (guard-pos (guard-position guard))
-         (cells-traveled (mapcar (lambda (step)
-                                   ())
+         (cells-travelled (mapcar (lambda (step)
+                                   (list (+ (first guard-pos) (* (first move-increment) step))
+                                         (+ (second guard-pos) (* (second move-increment) step))))
                                  (a:iota move-distance :start 1))))
     (incf (guard-steps guard) move-distance)
     (setf (guard-direction guard) next-dir)
-    )
+    (mapc (lambda (cell)
+            (pushnew cell (guard-visited guard) :test 'equal))
+          cells-travelled)
+    (setf (guard-position guard) (a:last-elt cells-travelled)))
   )
 
 (defun p1 (guard)
   (loop
     (move-guard guard (find-next-obstacle guard))
     (when (oob? guard)                  ; out of bounds
-      (return (length (guard-visited guard)))))) 
+      (return (1- (length (guard-visited guard))))))) 
 
 (defun p2 (guard)
   )
@@ -140,10 +149,10 @@
       (1 (format t "~&Part 1: ~a" (p1 (copy-guard guard))))
       (2 (format t "~&Part 2: ~a" (p2 (copy-guard guard)))))))
 
-(defun main (parts-list)
+(defun main (&rest parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
          (input-string (uiop:read-file-string infile-name)))
     (run parts-list (parse-input input-string))))
 
-(defun test (parts-list)
+(defun test (&rest parts-list)
   (run parts-list (parse-input +test-input+)))
