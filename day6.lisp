@@ -2,7 +2,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(str alexandria))
-  (add-package-local-nickname 'a 'alexandria))
+  (ext:add-package-local-nickname 'a 'alexandria))
 
 (defparameter +day-number+ 6)
 (defparameter +input-name-template+ "2024d~dinput.txt")
@@ -42,7 +42,7 @@
           when (char= cell #\#)
             do (push (list line col) obstacle-list)
           when (char= cell #\^)
-            do (setf guard-start (list line col))
+            do (setf guard-start (list line col 'n))
           when (char= cell #\newline)
             do (when (= 0 line)
                  (setf grid-width col))
@@ -123,7 +123,8 @@
          (guard-pos (guard-position guard))
          (cells-travelled (mapcar (lambda (step)
                                    (list (+ (first guard-pos) (* (first move-increment) step))
-                                         (+ (second guard-pos) (* (second move-increment) step))))
+                                         (+ (second guard-pos) (* (second move-increment) step))
+                                         (guard-direction guard)))
                                  (a:iota move-distance :start 1))))
     (incf (guard-steps guard) move-distance)
     (setf (guard-direction guard) next-dir)
@@ -133,14 +134,18 @@
     (setf (guard-position guard) (a:last-elt cells-travelled)))
   )
 
+(defvar *maxloops* (expt 10 6))
+
 (defun p1 (guard)
   (loop for x from 0 upto *maxloops*
         until (oob? guard)
         do (move-guard guard (find-next-obstacle guard))
-        finally (return (1- (length (guard-visited guard))))))
+        finally (return (1- (length (remove-duplicates (guard-visited guard) :test 'equal :key (lambda (s) (butlast s))))))))
 
 
 (defun p2 (guard)
+  (p1 guard) ;collect visited cells
+  
   )
 
 (defun run (parts-list guard)
