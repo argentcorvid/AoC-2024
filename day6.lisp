@@ -143,10 +143,14 @@
         finally (return (1- (length (remove-duplicates (guard-visited guard) :test 'equal :key (lambda (s) (butlast s))))))))
 
 
-(defun p2 (guard)
+(defun p2 (guard) ; need to save starting point before doing p1. can save just the start and not have to copy?
   (p1 guard) ;collect visited cells
-  
-  )
+  (loop for cand in (guard-visited guard)
+        for vg = (guard-copy guard)
+        do (push (butlast cand) (guard-obstacles vg))
+        counting (loop until (member (move-guard vg (next-obstacle vg)) (guard-visited vg) :test 'equal)
+                       never (oob? guard));dont think this will work - visited is added before returning, so will quit with true right away 
+        ))
 
 (defun run (parts-list guard)
   (unless (listp parts-list)
