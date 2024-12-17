@@ -1,5 +1,10 @@
 ;;;day6
+#+SBCL
+(eval-when (:compile-toplevel :load-toplevel)
+  (ql:quickload '(str alexandria))
+  (add-package-local-nickname 'a 'alexandria))
 
+#+ECL
 (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(str alexandria))
   (ext:add-package-local-nickname 'a 'alexandria))
@@ -57,7 +62,6 @@
                                                           (nreverse obstacle-list))))))))
 
 (defun fence (min-max-list &optional (extra 0)) ;making it 1 square bigger will make the total 1 more than needed
-  ;(declare (optimize (debug 3)))
   (let ((min-row (- (first (first min-max-list)) extra))
         (min-col (- (second (first min-max-list)) extra))
         (max-row (+ (first (second min-max-list)) extra))
@@ -73,8 +77,7 @@
                             :start min-col)))
      :test 'equal)))
 
-(defun oob? (guard) ;rewrite, no longer actually goes out if extra = 0
-  (declare (optimize (debug 3)))
+(defun oob? (guard) 
   (let* ((pos (guard-position guard))
          (bounds (guard-bounds guard))
          (row (first pos))
@@ -126,13 +129,14 @@
                                          (+ (second guard-pos) (* (second move-increment) step))
                                          (guard-direction guard)))
                                  (a:iota move-distance :start 1))))
+    (when (subsetp cells-travelled (guard-visited guard) :test 'equal) ; loop detection: cells-travelled is subset of the already visited?
+      (return-from move-guard))
     (incf (guard-steps guard) move-distance)
     (setf (guard-direction guard) next-dir)
     (mapc (lambda (cell)
             (pushnew cell (guard-visited guard) :test 'equal))
           cells-travelled)
-    (setf (guard-position guard) (a:last-elt cells-travelled)))
-  )
+    (setf (guard-position guard) (a:last-elt cells-travelled))))
 
 (defvar *maxloops* (expt 10 6))
 
@@ -140,22 +144,28 @@
   (loop for x from 0 upto *maxloops*
         until (oob? guard)
         do (move-guard guard (find-next-obstacle guard))
-        finally (return (1- (length (remove-duplicates (guard-visited guard) :test 'equal :key (lambda (s) (butlast s))))))))
+        finally (return (1- (length (remove-duplicates (guard-visited guard)
+                                                       :test 'equal
+                                                       :key (lambda (s)
+                                                              (butlast s))))))))
 
-
-(defun p2 (guard) ; need to save starting point before doing p1. can save just the start and not have to copy?
-  (p1 guard) ;collect visited cells
-  (loop for cand in (guard-visited guard)
-        for vg = (guard-copy guard)
-        do (push (butlast cand) (guard-obstacles vg))
-        counting (loop until (member (move-guard vg (next-obstacle vg)) (guard-visited vg) :test 'equal)
-                       never (oob? guard));dont think this will work - visited is added before returning, so will quit with true right away 
-        ))
+(defun p2 (guard) 
+  (let ((start-pt (guard-position guard))
+        (orig-obst (guard-obstacles guard)))
+    (p1 guard) ;collect visited cells
+    (let ((orig-visited (guard-visited guard)))
+     (loop for cand in orig-visited 
+           do (setf (guard-position guard) start-pt
+                    (guard-visited guard)  (list (append start-pt '(n)))
+                    (guard-obstacles guard) (append (list (butlast cand)) orig-obst))
+           counting (loop for x upto *maxloops*
+                            thereis (null (move-guard guard (find-next-obstacle guard))) 
+                          until (oob? guard)
+                          finally (when (>= x *maxloops*)
+                                    (error "probable infinite loop not caught")))))))
 
 (defun run (parts-list guard)
-  (unless (listp parts-list)
-    (setf parts-list (list parts-list)))
-  (dolist (part parts-list)
+  (dolist (part (a:ensure-list parts-list))
     (ccase part
       (1 (format t "~&Part 1: ~a" (p1 (copy-guard guard))))
       (2 (format t "~&Part 2: ~a" (p2 (copy-guard guard)))))))
