@@ -158,8 +158,8 @@
            do (setf (guard-position guard) start-pt
                     (guard-visited guard)  (list (append start-pt '(n)))
                     (guard-obstacles guard) (append (list (butlast cand)) orig-obst))
-           counting (loop for x upto *maxloops*
-                            thereis (null (move-guard guard (find-next-obstacle guard))) 
+           collecting (loop for x upto *maxloops*
+                            thereis (move-guard guard (find-next-obstacle guard)) 
                           until (oob? guard)
                           finally (when (>= x *maxloops*)
                                     (error "probable infinite loop not caught")))))))
@@ -168,7 +168,10 @@
   (dolist (part (a:ensure-list parts-list))
     (ccase part
       (1 (format t "~&Part 1: ~a" (p1 (copy-guard guard))))
-      (2 (format t "~&Part 2: ~a" (p2 (copy-guard guard)))))))
+      (2 (let* ((ng (copy-guard guard))
+                (results (remove-duplicates (remove nil (p2 ng)) :test #'equal)))
+           (format t "~&Part 2: ~a" (length results))
+           (format t "~&loop obstacle locations: ~a" results))))))
 
 (defun main (&rest parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
