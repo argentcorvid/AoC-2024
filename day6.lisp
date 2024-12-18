@@ -54,7 +54,7 @@
                (setf col -1)
                (incf line)
                (incf grid-length)
-          finally (return (let ((min-max (list (list -1 -1) (list grid-width (1- grid-length))))) ; newline at end of file
+          finally (return (let ((min-max (list (list -1 -1) (list (1- grid-width) (1- grid-length))))) ; newline at end of file
                             (make-guard :position guard-start
                                         :visited (list guard-start)
                                         :bounds min-max 
@@ -62,30 +62,33 @@
                                                           (nreverse obstacle-list))))))))
 
 (defun fence (min-max-list &optional (extra 0)) ;making it 1 square bigger will make the total 1 more than needed
-  (let ((min-row (- (first (first min-max-list)) extra))
-        (min-col (- (second (first min-max-list)) extra))
-        (max-row (+ (first (second min-max-list)) extra))
-        (max-col (+ (second (second min-max-list)) extra)))
-    (remove-duplicates
-     (nconc (mapcan (lambda (s)
-                      (list (list min-row  s) (list s min-col)))
-                    (a:iota (+ 2 max-row extra)
-                            :start min-row))
-            (mapcan (lambda (s)
-                      (list (list max-col s) (list s max-row)))
-                    (a:iota (+ 2 max-col extra)
-                            :start min-col)))
-     :test 'equal)))
+  (destructuring-bind ((rmin cmin) (rmax cmax))
+      min-max-list
+    (let ((min-row (- rmin extra))
+          (min-col (- cmin extra))
+          (max-row (+ rmax extra))
+          (max-col (+ cmax extra)))
+      (remove-duplicates
+       (nconc (mapcan (lambda (s)
+                        (list (list min-row  s) (list s min-col)))
+                      (a:iota (+ 2 max-row extra)
+                              :start min-row))
+              (mapcan (lambda (s)
+                        (list (list max-col s) (list s max-row)))
+                      (a:iota (+ 2 max-col extra)
+                              :start min-col)))
+       :test 'equal))))
 
 (defun oob? (guard) 
   (let* ((pos (guard-position guard))
-         (bounds (guard-bounds guard))
          (row (first pos))
          (col (second pos)))
-    (or (= row (caar bounds))
-        (= row (caadr bounds))
-        (= col (cadar bounds))
-        (= col (cadadr bounds)))))
+    (destructuring-bind ((rmin cmin) (rmax cmax))
+        (guard-bounds guard)
+      (or (= row rmin)
+          (= row rmax)
+          (= col cmin)
+          (= col cmax)))))
 
 (defun man-dist (pt1 pt2)
   "find the 'manhattan' distance between 2 points"
@@ -119,17 +122,28 @@
 
 (defvar *next-dir-lookup* (pairlis '(n s e w) '(e w s n)))
 
+(defun filter-oob (position-list guard)
+  (remove-if-not (lambda (itm)
+                   (destructuring-bind (r c d) itm
+                     (declare (ignore d))
+                     (destructuring-bind ((rmin cmin) (rmax cmax)) (guard-bounds guard)
+                       (and (< rmin r rmax)
+                            (< cmin c cmax)))))
+                 position-list))
+
 (defun move-guard (guard next-obstacle)
   (let* ((move-increment (a:assoc-value *directions* (guard-direction guard)))
          (move-distance  (1- (man-dist (guard-position guard) next-obstacle)))
          (next-dir (a:assoc-value *next-dir-lookup* (guard-direction guard)))
          (guard-pos (guard-position guard))
          (cells-travelled (mapcar (lambda (step)
-                                   (list (+ (first guard-pos) (* (first move-increment) step))
-                                         (+ (second guard-pos) (* (second move-increment) step))
-                                         (guard-direction guard)))
-                                 (a:iota move-distance :start 1))))
-    (when (subsetp cells-travelled (guard-visited guard) :test 'equal) ; loop detection: cells-travelled is subset of the already visited?
+                                    (list (+ (first guard-pos) (* (first move-increment) step))
+                                          (+ (second guard-pos) (* (second move-increment) step))
+                                          (guard-direction guard)))
+                                  (a:iota move-distance :start 1))))
+    (when (subsetp (filter-oob cells-travelled guard)
+                   (guard-visited guard)
+                   :test 'equal) ; loop detection: cells-travelled is subset of the already visited?
       (return-from move-guard))
     (incf (guard-steps guard) move-distance)
     (setf (guard-direction guard) next-dir)
@@ -144,32 +158,39 @@
   (loop for x from 0 upto *maxloops*
         until (oob? guard)
         do (move-guard guard (find-next-obstacle guard))
-        finally (return (1- (length (remove-duplicates (guard-visited guard)
-                                                       :test 'equal
-                                                       :key (lambda (s)
-                                                              (butlast s))))))))
+        finally (return (remove-duplicates (guard-visited guard)
+                                           :test 'equal
+                                           :key (lambda (s)
+                                                  (butlast s))))))
 
 (defun p2 (guard) 
-  (let ((start-pt (guard-position guard))
-        (orig-obst (guard-obstacles guard)))
+  (let* ((start-pt (guard-position guard))
+         (orig-obst (guard-obstacles guard)))
     (p1 guard) ;collect visited cells
-    (let ((orig-visited (guard-visited guard)))
+    (let ((orig-visited (filter-oob (guard-visited guard) guard)))
      (loop for cand in orig-visited 
            do (setf (guard-position guard) start-pt
-                    (guard-visited guard)  (list (append start-pt '(n)))
-                    (guard-obstacles guard) (append (list (butlast cand)) orig-obst))
-           collecting (loop for x upto *maxloops*
-                            thereis (move-guard guard (find-next-obstacle guard)) 
-                          until (oob? guard)
-                          finally (when (>= x *maxloops*)
-                                    (error "probable infinite loop not caught")))))))
+                    (guard-visited guard)  (list start-pt)
+                    (guard-obstacles guard) (append (list (butlast cand)) orig-obst)
+                    (guard-steps guard) 0)
+           when (loop for x upto *maxloops*
+                        thereis (null (move-guard guard (find-next-obstacle guard))) 
+                      until (oob? guard)
+                      finally (when (>= x *maxloops*)
+                                (error "probable infinite loop not caught"))
+                              (return nil))
+             collect (butlast cand)))))
 
 (defun run (parts-list guard)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
-      (1 (format t "~&Part 1: ~a" (p1 (copy-guard guard))))
+      (1 (let* ((ng (copy-guard guard))
+                (results (p1 ng)))
+           (format t "~&Part 1: ~a" (1- (length results)))
+          ; (format t "~&visited cells: ~a" results)
+           ))
       (2 (let* ((ng (copy-guard guard))
-                (results (remove-duplicates (remove nil (p2 ng)) :test #'equal)))
+                (results (p2 ng)))
            (format t "~&Part 2: ~a" (length results))
            (format t "~&loop obstacle locations: ~a" results))))))
 
