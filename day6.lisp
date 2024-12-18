@@ -29,6 +29,10 @@
   '((6 3) (7 6) (7 7) (8 2) (8 3) (9 7))
   "what the answer for P2 with test input should be")
 
+(defvar *p2-my-answers*
+  ' ((9 7) (8 7) (7 2) (8 5) (7 6) (5 6) (4 3) (6 7))
+  "what my code returns")
+
 (defstruct guard
   (position (list 0 0))
   (direction 'n)
