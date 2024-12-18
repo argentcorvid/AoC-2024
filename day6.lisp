@@ -54,7 +54,7 @@
                (setf col -1)
                (incf line)
                (incf grid-length)
-          finally (return (let ((min-max (list (list -1 -1) (list (1- grid-width) (1- grid-length))))) ; newline at end of file
+          finally (return (let ((min-max (list (list -1 -1) (list grid-width (1- grid-length))))) ; newline at end of file
                             (make-guard :position guard-start
                                         :visited (list guard-start)
                                         :bounds min-max 
@@ -182,7 +182,7 @@
              collect (butlast cand)))))
 
 (defun run (parts-list guard)
-  (dolist (part (a:ensure-list parts-list))
+  (dolist (part (a:ensure-list parts-list) )
     (ccase part
       (1 (let* ((ng (copy-guard guard))
                 (results (p1 ng)))
@@ -191,8 +191,8 @@
            ))
       (2 (let* ((ng (copy-guard guard))
                 (results (p2 ng)))
-           (format t "~&Part 2: ~a" (length results))
-           (format t "~&loop obstacle locations: ~a" results))))))
+           (format t "~&loop obstacle locations: ~a" results)
+           (format t "~&Part 2: ~a" (length results)))))))
 
 (defun main (&rest parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
