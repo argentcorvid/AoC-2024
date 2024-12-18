@@ -25,6 +25,10 @@
 ......#...
 ")
 
+(defvar *p2-test-answer-locations*
+  '((6 3) (7 6) (7 7) (8 2) (8 3) (9 7))
+  "what the answer for P2 with test input should be")
+
 (defstruct guard
   (position (list 0 0))
   (direction 'n)
