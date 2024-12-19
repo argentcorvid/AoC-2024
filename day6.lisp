@@ -32,7 +32,7 @@
   "what the answer for P2 with test input should be")
 
 (defparameter *p2-my-answers*
-  '((9 7) (7 7) (7 6) (8 1) (8 3) (7 6) (6 3))
+  '((9 7) (7 7) (8 1) (8 3) (7 6) (6 3))
   "what my code returns")
 
 (defstruct guard
@@ -158,7 +158,7 @@
            (subsetp (filter-oob cells-travelled guard)
                     (guard-visited guard)
                     :test 'equal)) ; loop detection: cells-travelled is subset of the already visited?
-      (break)
+      ;(break)
       (return-from move-guard))
     (mapc (lambda (cell)
             (pushnew cell (guard-visited guard) :test 'equal))
@@ -177,16 +177,17 @@
         until (oob? guard)
         do (move-guard guard (find-next-obstacle guard))
         finally (return (remove-duplicates (guard-visited guard)
-                                           :test 'equal
-                                           :key (lambda (s)
-                                                  (butlast s))))))
+                                           :test #'equal
+                                           :key #'butlast))))
 
 (defun p2 (guard) 
   (let* ((start-pt (guard-position guard))
          (orig-obst (guard-obstacles guard)))
     (p1 guard) ;collect visited cells
     (let ((orig-visited (filter-oob (guard-visited guard) guard)))
-     (loop for cand in orig-visited 
+     (loop for cand in (remove-duplicates orig-visited
+                                          :test #'equal
+                                          :key #'butlast) 
            do (setf (guard-position guard) start-pt
                     (guard-visited guard)  (list start-pt)
                     (guard-obstacles guard) (append (list (butlast cand)) orig-obst)
