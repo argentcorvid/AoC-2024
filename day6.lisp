@@ -9,6 +9,8 @@
   (ql:quickload '(str alexandria))
   (ext:add-package-local-nickname 'a 'alexandria))
 
+(declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
+
 (defparameter +day-number+ 6)
 (defparameter +input-name-template+ "2024d~dinput.txt")
 
@@ -29,8 +31,8 @@
   '((6 3) (7 6) (7 7) (8 2) (8 3) (9 7))
   "what the answer for P2 with test input should be")
 
-(defvar *p2-my-answers*
-  ' ((9 7) (8 7) (7 2) (8 5) (7 6) (5 6) (4 3) (6 7))
+(defparameter *p2-my-answers*
+  '((9 7) (7 7) (7 6) (8 1) (8 3) (7 6) (6 3))
   "what my code returns")
 
 (defstruct guard
@@ -149,16 +151,24 @@
                                           (+ (second guard-pos) (* (second move-increment) step))
                                           (guard-direction guard)))
                                   (a:iota move-distance :start 1))))
-    (when (subsetp (filter-oob cells-travelled guard)
-                   (guard-visited guard)
-                   :test 'equal) ; loop detection: cells-travelled is subset of the already visited?
-      (return-from move-guard))
     (incf (guard-steps guard) move-distance)
     (setf (guard-direction guard) next-dir)
+    (when (and
+           (< 0 move-distance)
+           (subsetp (filter-oob cells-travelled guard)
+                    (guard-visited guard)
+                    :test 'equal)) ; loop detection: cells-travelled is subset of the already visited?
+      (break)
+      (return-from move-guard))
     (mapc (lambda (cell)
             (pushnew cell (guard-visited guard) :test 'equal))
           cells-travelled)
-    (setf (guard-position guard) (a:last-elt cells-travelled))))
+    (setf (guard-position guard) (if cells-travelled  ; if we get in a corner, and don't actually move, turn the elf
+                                     (a:last-elt cells-travelled)
+                                     (destructuring-bind (r c d)
+                                         guard-pos
+                                       (declare (ignore d))
+                                       (list r c (guard-direction guard)))))))
 
 (defvar *maxloops* (expt 10 6))
 
@@ -180,7 +190,8 @@
            do (setf (guard-position guard) start-pt
                     (guard-visited guard)  (list start-pt)
                     (guard-obstacles guard) (append (list (butlast cand)) orig-obst)
-                    (guard-steps guard) 0)
+                    (guard-steps guard) 0
+                    (guard-direction guard) 'n)
            when (loop for x upto *maxloops*
                         thereis (null (move-guard guard (find-next-obstacle guard))) 
                       until (oob? guard)
