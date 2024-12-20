@@ -1,6 +1,5 @@
 ;;;day6
-#+SBCL
-(eval-when (:compile-toplevel :load-toplevel)
+#+SBCL (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(str alexandria))
   (add-package-local-nickname 'a 'alexandria))
 
@@ -8,8 +7,6 @@
 (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(str alexandria))
   (ext:add-package-local-nickname 'a 'alexandria))
-
-(declaim (optimize (debug 3) ))
 
 (defparameter +day-number+ 6)
 (defparameter +input-name-template+ "2024d~dinput.txt")
@@ -70,7 +67,7 @@
                                               :bounds min-max 
                                               :obstacles (nconc (fence min-max 1)
                                                                 (nreverse obstacle-list)))))
-                            (setf (gethash guard-start (guard-visited g)) 'n)
+                            (setf (gethash guard-start (guard-visited g)) (list 'n))
                             g)))))
 
 (defun fence (min-max-list &optional (extra 0)) ;making it 1 square bigger will make the total 1 more than needed
@@ -136,8 +133,7 @@
 
 (defun filter-oob (position-list guard)
   (remove-if-not (lambda (itm)
-                   (destructuring-bind (r c d) itm
-                     (declare (ignore d))
+                   (destructuring-bind (r c) itm
                      (destructuring-bind ((rmin cmin) (rmax cmax)) (guard-bounds guard)
                        (and (< rmin r rmax)
                             (< cmin c cmax)))))
@@ -152,21 +148,22 @@
                                     (list (+ (first guard-pos) (* (first move-increment) step))
                                           (+ (second guard-pos) (* (second move-increment) step))))
                                   (a:iota move-distance :start 1))))
-    (incf (guard-steps guard) move-distance)
     (when (and
            (< 0 move-distance)
            (loop for c in cells-travelled
-                   thereis (member next-dir (gethash c (guard-visited guard))
-                                   :test #'equal))) ; loop detection: cells-travelled is subset of the already visited?
-      ;(break)
+                ; do (break)
+                   thereis (member (guard-direction guard)   ;next-dir
+                                   (gethash c (guard-visited guard))))) ; loop detection: cells-travelled is subset of the already visited?
+      
       (return-from move-guard))
-    (setf (guard-direction guard) next-dir)
-    (mapc (lambda (cell)
-            ;(pushnew cell (guard-visited guard) :test 'equal)
-            (pushnew next-dir (gethash cell (guard-visited guard))))
-          cells-travelled)
+    (incf (guard-steps guard) move-distance)
     (if cells-travelled
-        (setf (guard-position guard) (a:last-elt cells-travelled)))))
+        (setf (guard-position guard) (a:last-elt cells-travelled))
+        (pushnew next-dir (gethash guard-pos (guard-visited guard))))
+    (mapc (lambda (cell)
+            (pushnew (guard-direction guard) (gethash cell (guard-visited guard))))
+          cells-travelled)
+    (setf (guard-direction guard) next-dir)))
 
 (defvar *maxloops* (expt 10 6))
 
@@ -181,7 +178,7 @@
          (orig-obst (guard-obstacles guard)))
     (p1 guard) ;collect visited cells
     (let ((orig-visited (filter-oob (a:hash-table-keys (guard-visited guard)) guard)))
-     (loop with res = (make-hash :test 'equal)
+     (loop with res = (make-hash-table :test 'equal)
            for cand in orig-visited
            do (setf (guard-position guard) start-pt
                     
@@ -189,7 +186,7 @@
                     (guard-steps guard) 0
                     (guard-direction guard) 'n)
               (clrhash (guard-visited guard))
-              (setf (gethash start-pt (guard-visited guard)) 'n)
+              (setf (gethash start-pt (guard-visited guard)) (list 'n))
            when (loop for x upto *maxloops*
                         thereis (null (move-guard guard (find-next-obstacle guard))) 
                       until (oob? guard)
@@ -203,14 +200,14 @@
   (dolist (part (a:ensure-list parts-list) )
     (ccase part
       (1 (let* ((ng (copy-guard guard))
-                (results (hash-table-count (p1 ng))))
-           (format t "~&Part 1: ~a" (1- results))
-          ; (format t "~&visited cells: ~a" results)
+                (results (p1 ng)))
+           (format t "~&visited cells: ~a" (a:hash-table-keys results))
+           (format t "~&Part 1: ~a" (1- (hash-table-count results)))
            ))
       (2 (let* ((ng (copy-guard guard))
-                (results (hash-table-count (p2 ng))))
-       ;    (format t "~&loop obstacle locations: ~a" results)
-           (format t "~&Part 2: ~a" results))))))
+                (results (p2 ng)))
+           (format t "~&loop obstacle locations: ~a" (a:hash-table-keys results))
+           (format t "~&Part 2: ~a" (hash-table-count results)))))))
 
 (defun main (&rest parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
