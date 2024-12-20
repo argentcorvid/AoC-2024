@@ -9,7 +9,7 @@
   (ql:quickload '(str alexandria))
   (ext:add-package-local-nickname 'a 'alexandria))
 
-(declaim (optimize (debug 3) (safety 3) (speed 0) (space 0)))
+(declaim (optimize (debug 3) ))
 
 (defparameter +day-number+ 6)
 (defparameter +input-name-template+ "2024d~dinput.txt")
@@ -57,7 +57,7 @@
           when (char= cell #\#)
             do (push (list line col) obstacle-list)
           when (char= cell #\^)
-            do (setf guard-start (list line col 'n))
+            do (setf guard-start (list line col))
           when (char= cell #\newline)
             do (when (= 0 line)
                  (setf grid-width col))
@@ -70,7 +70,7 @@
                                               :bounds min-max 
                                               :obstacles (nconc (fence min-max 1)
                                                                 (nreverse obstacle-list)))))
-                            (setf (gethash guard-start (guard-visited g)) t)
+                            (setf (gethash guard-start (guard-visited g)) 'n)
                             g)))))
 
 (defun fence (min-max-list &optional (extra 0)) ;making it 1 square bigger will make the total 1 more than needed
@@ -150,27 +150,23 @@
          (guard-pos (guard-position guard))
          (cells-travelled (mapcar (lambda (step)
                                     (list (+ (first guard-pos) (* (first move-increment) step))
-                                          (+ (second guard-pos) (* (second move-increment) step))
-                                          (guard-direction guard)))
+                                          (+ (second guard-pos) (* (second move-increment) step))))
                                   (a:iota move-distance :start 1))))
     (incf (guard-steps guard) move-distance)
-    (setf (guard-direction guard) next-dir)
     (when (and
            (< 0 move-distance)
            (loop for c in cells-travelled
-                 thereis (gethash c (guard-visited guard)))) ; loop detection: cells-travelled is subset of the already visited?
+                   thereis (member next-dir (gethash c (guard-visited guard))
+                                   :test #'equal))) ; loop detection: cells-travelled is subset of the already visited?
       ;(break)
       (return-from move-guard))
+    (setf (guard-direction guard) next-dir)
     (mapc (lambda (cell)
             ;(pushnew cell (guard-visited guard) :test 'equal)
-            (setf (gethash cell (guard-visited guard)) t))
+            (pushnew next-dir (gethash cell (guard-visited guard))))
           cells-travelled)
-    (setf (guard-position guard) (if cells-travelled  ; if we get in a corner, and don't actually move, turn the elf
-                                     (a:last-elt cells-travelled)
-                                     (destructuring-bind (r c d)
-                                         guard-pos
-                                       (declare (ignore d))
-                                       (list r c (guard-direction guard)))))))
+    (if cells-travelled
+        (setf (guard-position guard) (a:last-elt cells-travelled)))))
 
 (defvar *maxloops* (expt 10 6))
 
@@ -178,44 +174,43 @@
   (loop for x from 0 upto *maxloops*
         until (oob? guard)
         do (move-guard guard (find-next-obstacle guard))
-        finally (return (a:hash-table-keys (guard-visited guard)))))
+        finally (return (guard-visited guard))))
 
 (defun p2 (guard) 
   (let* ((start-pt (guard-position guard))
          (orig-obst (guard-obstacles guard)))
     (p1 guard) ;collect visited cells
     (let ((orig-visited (filter-oob (a:hash-table-keys (guard-visited guard)) guard)))
-     (loop for cand in orig-visited
+     (loop with res = (make-hash :test 'equal)
+           for cand in orig-visited
            do (setf (guard-position guard) start-pt
                     
-                    (guard-obstacles guard) (append (list (butlast cand)) orig-obst)
+                    (guard-obstacles guard) (append (list cand) orig-obst)
                     (guard-steps guard) 0
                     (guard-direction guard) 'n)
               (clrhash (guard-visited guard))
-              (setf (gethash start-pt (guard-visited guard)) t)
+              (setf (gethash start-pt (guard-visited guard)) 'n)
            when (loop for x upto *maxloops*
                         thereis (null (move-guard guard (find-next-obstacle guard))) 
                       until (oob? guard)
                       finally (when (>= x *maxloops*)
                                 (error "probable infinite loop not caught"))
                               (return nil))
-             collect (butlast cand)))))
+             do (setf (gethash cand res) t)
+           finally (return res)))))
 
 (defun run (parts-list guard)
   (dolist (part (a:ensure-list parts-list) )
     (ccase part
       (1 (let* ((ng (copy-guard guard))
-                (results (remove-duplicates (p1 ng)
-                                            :test 'equal
-                                            :key #'butlast)))
-           (format t "~&Part 1: ~a" (1- (length results)))
+                (results (hash-table-count (p1 ng))))
+           (format t "~&Part 1: ~a" (1- results))
           ; (format t "~&visited cells: ~a" results)
            ))
       (2 (let* ((ng (copy-guard guard))
-                (results (remove-duplicates (p2 ng)
-                                            :test 'equal)))
+                (results (hash-table-count (p2 ng))))
        ;    (format t "~&loop obstacle locations: ~a" results)
-           (format t "~&Part 2: ~a" (length results)))))))
+           (format t "~&Part 2: ~a" results))))))
 
 (defun main (&rest parts-list)
   (let* ((infile-name (format nil +input-name-template+ +day-number+))
