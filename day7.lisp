@@ -22,22 +22,26 @@
 "
              :omit-nulls t))
 
-(defun parse-input (lines)
+;(defun parse-input (lines))
+
+(defun possible (result number-list &optional (ops (list #'floor #'-)))
+  (declare (optimize (debug 3) (speed 0) (space 0)))
+  (labels ((%possible (prev nl)
+             (when (= 1 (length nl))
+               (return-from %possible (= prev (first nl))))
+             (loop with (a . rest) = nl
+                   for op in ops
+                   when (%possible (funcall op prev a)
+                                   rest)
+                     do (return-from %possible t))))
+    (%possible result (nreverse number-list))))
+
+(defun p1 (lines)
   (loop for line in lines
-        collect (mapcar (a:rcurry #'parse-integer :junk-allowed t) (str:split #\space line :omit-nulls t))))
-
-(defun possible (result number-list)
-  (labels ((possible% (r nl accum)
-             ()))
-    (possible% result (nreverse number-list) 0)))
-
-(defun p1 (data)
-  (let ((sum 0))
-    (dolist (eqn data sum)
-      (destructuring-bind (test-value &rest terms)
-          eqn
-        (when (possible test-value terms)
-          (incf sum test-value)))))) 
+        for (result . numbers) = (mapcar (a:rcurry #'parse-integer :junk-allowed t)
+                                         (str:split #\space line :omit-nulls t))
+        when (possible result numbers)
+          sum result)) 
 
 (defun p2 ()
   )
@@ -51,8 +55,9 @@
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*))
          (input-lines (uiop:read-file-lines infile-name))
-         (data (parse-input input-lines)))
-    (run parts data)))
+        ; (data (parse-input input-lines))
+         )
+    (run parts input-lines)))
 
 (defun test (&rest parts)
-  (run parts (parse-input *test-data*)))
+  (run parts *test-input*))
