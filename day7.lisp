@@ -30,18 +30,7 @@
                (when (endp rest)
                  (return-from %possible (= prev a)))
                (loop for op in ops
-                     when (eql op #'/)
-                       when(zerop (mod prev a))
-                         when (%possible (funcall op prev a)
-                                         rest)
-                           return t
-                     when (eql op #'decat)
-                       when (endswith prev a)
-                         when (%possible (funcall op prev a)
-                                         rest)
-                           return t
-                     when (eql op #'-)
-                       when (%possible (funcall op prev a)
+                     when (%possible (funcall op prev a)
                                          rest)
                          return t))))
     (%possible result (nreverse number-list))))
@@ -52,10 +41,12 @@
       (zerop (expt (mod (- num1 num2) 10)
                    (digits num2)))))
 (defun digits (n)
-  (1+ (floor(log n 10))))
+  (ceiling (log n 10)))
 
 (defun decat (num1 num2)
-  (floor num1 (expt 10 (digits num2))))
+  (if (endswith num1 num2)
+      (floor num1 (expt 10 (digits num2)))
+      0))
 
 (defun p1 (lines)
   (loop for line in lines
@@ -68,7 +59,7 @@
   (loop for line in lines
         for (result . numbers) = (mapcar (a:rcurry #'parse-integer :junk-allowed t)
                                          (str:split #\space line :omit-nulls t))
-        when (possible result numbers (list #'- #'/ #'decat))
+        when (possible result numbers (list #'/ #'decat #'-))
           sum result))
 
 (defun run (parts-list data)
@@ -86,13 +77,3 @@
 
 (defun test (&rest parts)
   (run parts *test-input*))
-put*))
-l *input-name-template* *day-number*))
-         (input-lines (uiop:read-file-lines infile-name))
-        ; (data (parse-input input-lines))
-         )
-    (run parts input-lines)))
-
-(defun test (&rest parts)
-  (run parts *test-input*))
-put*))
