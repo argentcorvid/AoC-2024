@@ -24,16 +24,16 @@
 
 ;(defun parse-input (lines))
 
-(defun possible (result number-list &optional (ops (list #'floor #'-)))
+(defun possible (result number-list &optional (ops (list #'/ #'-)))
   (declare (optimize (debug 3) (speed 0) (space 0)))
   (labels ((%possible (prev nl)
-             (when (= 1 (length nl))
-               (return-from %possible (= prev (first nl))))
-             (loop with (a . rest) = nl
-                   for op in ops
-                   when (%possible (funcall op prev a)
-                                   rest)
-                     do (return-from %possible t))))
+             (destructuring-bind (a . rest) nl
+               (when (endp rest)
+                 (return-from %possible (= prev a)))
+               (loop for op in ops
+                     when (%possible (funcall op prev a)
+                                     rest)
+                       do (return-from %possible t)))))
     (%possible result (nreverse number-list))))
 
 (defun p1 (lines)
