@@ -25,16 +25,37 @@
 ;(defun parse-input (lines))
 
 (defun possible (result number-list &optional (ops (list #'/ #'-)))
-  (declare (optimize (debug 3) (speed 0) (space 0)))
   (labels ((%possible (prev nl)
              (destructuring-bind (a . rest) nl
                (when (endp rest)
                  (return-from %possible (= prev a)))
                (loop for op in ops
-                     when (%possible (funcall op prev a)
-                                     rest)
-                       do (return-from %possible t)))))
+                     when (eql op #'/)
+                       when(zerop (mod prev a))
+                         when (%possible (funcall op prev a)
+                                         rest)
+                           return t
+                     when (eql op #'decat)
+                       when (endswith prev a)
+                         when (%possible (funcall op prev a)
+                                         rest)
+                           return t
+                     when (eql op #'-)
+                       when (%possible (funcall op prev a)
+                                         rest)
+                         return t))))
     (%possible result (nreverse number-list))))
+
+(defun endswith (num1 num2)
+  (if (zerop num2)
+      (zerop (mod num1 10))
+      (zerop (expt (mod (- num1 num2) 10)
+                   (digits num2)))))
+(defun digits (n)
+  (1+ (floor(log n 10))))
+
+(defun decat (num1 num2)
+  (floor num1 (expt 10 (digits num2))))
 
 (defun p1 (lines)
   (loop for line in lines
@@ -43,8 +64,12 @@
         when (possible result numbers)
           sum result)) 
 
-(defun p2 ()
-  )
+(defun p2 (lines)
+  (loop for line in lines
+        for (result . numbers) = (mapcar (a:rcurry #'parse-integer :junk-allowed t)
+                                         (str:split #\space line :omit-nulls t))
+        when (possible result numbers (list #'- #'/ #'decat))
+          sum result))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
@@ -61,3 +86,13 @@
 
 (defun test (&rest parts)
   (run parts *test-input*))
+put*))
+l *input-name-template* *day-number*))
+         (input-lines (uiop:read-file-lines infile-name))
+        ; (data (parse-input input-lines))
+         )
+    (run parts input-lines)))
+
+(defun test (&rest parts)
+  (run parts *test-input*))
+put*))
