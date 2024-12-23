@@ -38,8 +38,8 @@
 
 (defun p1 (grid)
   (let ((antinodes (make-hash-table))
-        (maxrow (1+ (gethash 'rows grid)))
-        (maxcol (1+ (gethash 'cols grid))))
+        (maxrow (gethash 'rows grid))
+        (maxcol (gethash 'cols grid)))
     (maphash (lambda (freq locs)
                (when (and (characterp freq) ;becuase of rows and cols
                           (< 1 (length locs)))
@@ -49,8 +49,8 @@
                                                 (an1 (+ pt1 (* 2 dist)))
                                                 (an2 (+ pt2 (* -2 dist))))
                                            (dolist (an (list an1 an2))
-                                             (when (and (< 0 (realpart an) maxrow)
-                                                        (< 0 (imagpart an) maxcol))
+                                             (when (and (<= 0 (realpart an) maxrow)
+                                                        (<= 0 (imagpart an) maxcol))
                                                (setf (gethash an antinodes) t))))))
                                      locs :length 2)))
              grid)
