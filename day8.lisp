@@ -28,9 +28,10 @@
         (antenna-scanner (ppcre:create-scanner "[0-9a-zA-Z]")))
     (loop for l from 0
           for line in lines
-          do (ppcre:do-matches (c end antenna-scanner line grid)
+          do (ppcre:do-matches (c end antenna-scanner line)
                (let ((antenna-value (char line c)))
-                 (setf (gethash (complex l c) grid) antenna-value))))))
+                 (setf (gethash (complex l c) grid) antenna-value))))
+    grid))
 
 (defun p1 ()
   ) 
