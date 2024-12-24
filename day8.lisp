@@ -45,12 +45,12 @@
                           (< 1 (length locs)))
                  (a:map-combinations (lambda (points)
                                        (destructuring-bind (pt1 pt2) points
-                                         (let* ((dist (- pt2 pt1))
-                                                (an1 (+ pt1 (* 2 dist)))
-                                                (an2 (+ pt2 (* -2 dist))))
+                                         (let* ((dist (- pt1 pt2))
+                                                (an1 (+ pt2 (* 2 dist)))
+                                                (an2 (+ pt2 (- dist))))
                                            (dolist (an (list an1 an2))
-                                             (when (and (<= 0 (realpart an) maxrow)
-                                                        (<= 0 (imagpart an) maxcol))
+                                             (when (and (<= 0 (realpart an) (1- maxrow))
+                                                        (<= 0 (imagpart an) (1- maxcol)))
                                                (setf (gethash an antinodes) t))))))
                                      locs :length 2)))
              grid)
@@ -62,8 +62,8 @@
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
-      (1 (let ((p1-answer (hash-table-count (p1 data))))
-           (format t "~&Part 1: ~a" p1-answer)))
+      (1 (let ((p1-answer (p1 data)))
+           (format t "~&Part 1: ~a" (hash-table-count p1-answer))))
       (2 (format t "~&Part 2: ~a" (p2 data))))))
 
 (defun main (&rest parts)
