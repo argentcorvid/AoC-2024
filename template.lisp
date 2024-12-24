@@ -32,5 +32,5 @@
          (data (parse-input input-lines)))
     (run parts data)))
 
-(defun test (parts)
-  (run parts (parse-input *test-data*)))
+(defun test (&rest parts)
+  (run parts (parse-input *test-input*)))
