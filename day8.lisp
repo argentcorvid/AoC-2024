@@ -56,15 +56,42 @@
              grid)
     antinodes)) 
 
-(defun p2 ()
-  )
+(defun p2 (grid)
+  (let ((antinodes (make-hash-table))
+        (maxrow (1- (gethash 'rows grid)))
+        (maxcol (1- (gethash 'cols grid))))
+    (maphash (lambda (freq locs)
+               (when (and (characterp freq) ;becuase of rows and cols
+                          (< 1 (length locs)))
+                 (a:map-combinations (lambda (points)
+                                       (destructuring-bind (pt1 pt2) points
+                                         (let* ((dist (- pt1 pt2)))
+                                           (flet ((in-range (point)
+                                                    (and (<= 0 (realpart point) maxrow)
+                                                         (<= 0 (imagpart point) maxcol))))
+                                             
+                                             (loop for an = pt1 then (+ an dist)
+                                                   while (in-range an)
+                                                   do (setf (gethash an antinodes) t)
+                                                   finally (setf (gethash pt1 antinodes) t))
+                                             (loop for an = pt2 then (+ an (- dist))
+                                                   while (in-range an)
+                                                   do (setf (gethash an antinodes) t)
+                                                   finally (setf (gethash pt2 antinodes) t))))))
+                                     locs
+                                     :length 2)))
+            grid)
+    antinodes))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
       (1 (let ((p1-answer (p1 data)))
            (format t "~&Part 1: ~a" (hash-table-count p1-answer))))
-      (2 (format t "~&Part 2: ~a" (p2 data))))))
+      (2 (let ((p2-answer (p2 data)))
+           (format t "~&Part 2: ~a" (hash-table-count p2-answer))
+          ; (break)
+           )))))
 
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*))
@@ -72,5 +99,5 @@
          (data (parse-input input-lines)))
     (run parts data)))
 
-(defun test (parts)
+(defun test (&rest parts)
   (run parts (parse-input *test-input*)))
