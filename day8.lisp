@@ -64,7 +64,7 @@
     (labels ((grid-mapper(freq locs)
                (when (and (characterp freq) ;becuase of rows and cols
                           (< 1 (length locs)))
-                 (a:map-combinations #'location-mapper locs :length 2)))
+                 (a:map-permutations #'location-mapper locs :length 2)))
              (in-range (point)
                (and (<= 0 (realpart point) maxrow)
                     (<= 0 (imagpart point) maxcol)))
@@ -73,12 +73,7 @@
                  (let* ((dist (- pt1 pt2)))
                    (loop for an = pt1 then (+ an dist)
                          while (in-range an)
-                         do (setf (gethash an antinodes) t)
-                         finally (setf (gethash pt1 antinodes) t))
-                   (loop for an = pt2 then (+ an (- dist))
-                         while (in-range an)
-                         do (setf (gethash an antinodes) t)
-                         finally (setf (gethash pt2 antinodes) t))))))
+                         do (setf (gethash an antinodes) t))))))
       (maphash #'grid-mapper grid))
     antinodes))
 
