@@ -1,33 +1,130 @@
-;;;dayx
+;;;day9
 
 (eval-when (:compile-toplevel :load-toplevel)
-  (ql:quickload '(:alexandria :str))
+  (ql:quickload '(:alexandria :str :defclass-std))
+  (import 'defclass-std:defclass/std)
   #+SBCL (add-package-local-nickname 'a 'alexandria)
   #+ECL  (ext:add-package-local-nickname 'a 'alexandria))
 
-(defparameter *day-number* x)
+(defparameter *day-number* 9)
 (defparameter *input-name-template* "2024d~dinput.txt")
 
 (defparameter *test-input*
-  "2333133121414131402")
+  "2333133121414131402"
+  "checksum: 1928")
 
-(defun parse-input (input-string)
-  (let ((fat (make-hash-table)))
-    (loop for file-id   from 0
-          for file-pos  from 0 by 2
-          for free-pos  from 1 by 2
-          while (< free-pos (length input-string))
-          for file-size = (read-from-string input-string nil nil :start file-pos :end (1+ file-pos))
-          for free-size = (read-from-string input-string nil nil :start free-pos :end (1+ free-pos))
-          
-          do (setf (gethash file-id fat)
-                   (pairlis '(:file :size :free :moved)
-                            (list file-id file-size free-size (list))))
-          finally (setf (gethash :numfiles fat) file-id))
-    fat))
+(defparameter *simple-input*
+  "12345"
+  "checksum: 44")
 
-(defun p1 ()
-  ) 
+(defclass/std fileblock nil
+  ((file-id
+    initial-location
+    current-location
+    block-length
+    :type fixnum :std 0)))
+
+(defun next-freespace (ftable &optional (start 0) (end (hash-table-count ftable))) ;need better end conditions
+  (loop for idx from start below end
+        for fb = (gethash idx ftable)
+        when (and (not (null fb))
+                  (minusp (file-id fb)))
+          return (values fb (block-length fb))))
+
+(defun next-filespace (ftable &optional (start (hash-table-count ftable)) (end 0))
+  (loop for idx downfrom start to end
+        for fb = (gethash idx ftable)
+        when (and (not (null fb))
+                  (not (minusp (file-id fb))))
+          return (values fb (block-length fb))))
+
+(defun split-fileblock (fb size)
+  (let* ((old-size (block-length fb))
+         (new-loc  (+ 1 size (current-location fb))))
+    (loop
+      (when (<= size old-size)
+        (return))
+      (cerror "enter a new size" "requested size ~a is too big for fb ~a size ~a" size fb old-size)
+      (format t "~&New size: ")
+      (setq size (read))
+      (fresh-line))
+    (decf (block-length fb) size)
+    (make-instance 'fileblock
+                   :file-id (file-id fb)
+                   :initial-location new-loc
+                   :current-location new-loc
+                   :block-length size)))
+
+(defun swap-fileblocks (ftable src-idx dst-idx)
+  (let ((src-block (gethash src-idx ftable))
+        (dst-block (gethash dst-idx ftable)))
+    (if (= (block-length dst-block) (block-length src-block))
+        (setf (current-location src-block) dst-idx
+              (current-location dst-block) src-idx
+              (gethash dst-idx ftable) src-block
+              (gethash src-idx ftable) dst-block)
+        (error "Not enough room to move block ~a to block ~a" src-block dst-block))))
+
+(defun parse-input (input-string &optional (block-length 1))
+  (loop with fat = (make-hash-table :size (length input-string)
+                                    :rehash-size 1.25)
+        with posn-start = block-length
+        with skip = (* 2 block-length)
+        for file-id   from 0
+        for file-str-pos  from 0 by skip
+        for free-str-pos  from posn-start by skip
+        while (< free-str-pos (length input-string))
+        for file-size = (read-from-string input-string nil nil :start file-str-pos :end (+ block-length file-str-pos))
+        for free-size = (read-from-string input-string nil nil :start free-str-pos :end (+ block-length free-str-pos))
+        for file-pos = 0 then (with-accessors ((loc initial-location) (len block-length))
+                                  (gethash (1- file-str-pos) fat)
+                                (+ 2 len loc))
+        for free-pos = (+ 1 file-pos file-size) ; end of currentfile then end of prev file
+        do (setf (gethash file-str-pos fat)
+                 (make-instance 'fileblock :file-id file-id
+                                           :initial-location file-pos ;no, need expanded posns
+                                           :current-location file-pos
+                                           :block-length file-size)
+                 (gethash free-str-pos fat)
+                 (make-instance 'fileblock :file-id -1
+                                           :initial-location free-pos
+                                           :current-location free-pos
+                                           :block-length free-size))
+        finally (return fat)))
+
+(defun checksum (ftable)
+  (let ((sum 0))
+    (maphash (lambda (pos blk)
+               (declare (ignore pos))
+               (with-accessors ((fid file-id)
+                                (loc current-location)
+                                (len block-length))
+                   blk
+                 (unless (minusp fid)
+                   (incf sum (loop for l from loc
+                                   repeat len
+                                   summing (* fid l))) ;need to accout for runs here
+                   )))
+             ftable)
+    sum))
+
+(defun p1 (ftable)
+  (do* ((max-idx (1- (hash-table-count ftable)) (- max-idx 2))
+        (min-idx 1 (+ min-idx 2))
+        (src-blk (next-filespace ftable max-idx)
+                 (next-filespace ftable max-idx))
+        (dst-blk (next-freespace ftable min-idx)
+                 (next-freespace ftable min-idx))
+        (diff (- (block-length src-blk) (block-length dst-blk) )
+              (- (block-length src-blk) (block-length dst-blk) )))
+       ((< max-idx min-idx)
+        (checksum ftable))    
+    (when (plusp diff)
+      (princ "splitting")
+      (setf src-blk (split-fileblock src-blk diff)
+            max-idx (+ max-idx 1)
+            (gethash max-idx ftable) src-blk))
+    (swap-fileblocks ftable max-idx min-idx))) 
 
 (defun p2 ()
   )
