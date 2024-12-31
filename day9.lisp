@@ -55,7 +55,7 @@
                    :current-location new-loc
                    :block-length size)))
 
-(defun swap-fileblocks (ftable src-idx dst-idx)
+(defun swap-fileblocks (ftable src-idx dst-idx) ;need to handle if the src is smaller than the freespace
   (let ((src-block (gethash src-idx ftable))
         (dst-block (gethash dst-idx ftable)))
     (if (= (block-length dst-block) (block-length src-block))
@@ -66,30 +66,25 @@
         (error "Not enough room to move block ~a to block ~a" src-block dst-block))))
 
 (defun parse-input (input-string &optional (block-length 1))
-  (loop with fat = (make-hash-table :size (length input-string)
-                                    :rehash-size 1.25)
-        with posn-start = block-length
-        with skip = (* 2 block-length)
+  (loop with fat = (make-hash-table :size (* 2 (length input-string)))
+        with skip = block-length
         for file-id   from 0
         for file-str-pos  from 0 by skip
-        for free-str-pos  from posn-start by skip
-        while (< free-str-pos (length input-string))
+        while (< file-str-pos (length input-string))
         for file-size = (read-from-string input-string nil nil :start file-str-pos :end (+ block-length file-str-pos))
-        for free-size = (read-from-string input-string nil nil :start free-str-pos :end (+ block-length free-str-pos))
         for file-pos = 0 then (with-accessors ((loc initial-location) (len block-length))
                                   (gethash (1- file-str-pos) fat)
-                                (+ 2 len loc))
-        for free-pos = (+ 1 file-pos file-size) ; end of currentfile then end of prev file
+                                (+ len loc))
         do (setf (gethash file-str-pos fat)
-                 (make-instance 'fileblock :file-id file-id
+                 (make-instance 'fileblock :file-id (multiple-value-bind
+                                                          (q r)
+                                                        (floor file-id 2)
+                                                      (if (zerop r)
+                                                          q
+                                                          -1))
                                            :initial-location file-pos ;no, need expanded posns
                                            :current-location file-pos
-                                           :block-length file-size)
-                 (gethash free-str-pos fat)
-                 (make-instance 'fileblock :file-id -1
-                                           :initial-location free-pos
-                                           :current-location free-pos
-                                           :block-length free-size))
+                                           :block-length file-size))
         finally (return fat)))
 
 (defun checksum (ftable)
@@ -119,11 +114,14 @@
               (- (block-length src-blk) (block-length dst-blk) )))
        ((< max-idx min-idx)
         (checksum ftable))    
-    (when (plusp diff)
-      (princ "splitting")
-      (setf src-blk (split-fileblock src-blk diff)
-            max-idx (+ max-idx 1)
-            (gethash max-idx ftable) src-blk))
+    (cond ((plusp diff)
+           (princ "splitting")
+           (setf src-blk (split-fileblock src-blk (- (block-length src-blk) diff))
+                 max-idx (+ max-idx 1)
+                 (gethash max-idx ftable) src-blk))
+          ((minusp diff)
+           ;split the free space
+           ))
     (swap-fileblocks ftable max-idx min-idx))) 
 
 (defun p2 ()
