@@ -1,7 +1,9 @@
 ;;;day9
 
 (eval-when (:compile-toplevel :load-toplevel)
-  (ql:quickload '(:alexandria :str :defclass-std))
+  (ql:quickload '(:alexandria :str :defclass-std :closer-mop)))
+
+(eval-when (:compile-toplevel :load-toplevel)
   (import 'defclass-std:defclass/std)
   #+SBCL (add-package-local-nickname 'a 'alexandria)
   #+ECL  (ext:add-package-local-nickname 'a 'alexandria))
@@ -24,19 +26,29 @@
     block-length
     :type fixnum :std 0)))
 
+(defmethod print-object ((obj fileblock) stream)
+  (print-unreadable-object (obj stream :type t)
+    (format stream "~S"
+            (loop for sl in (c2mop:compute-slots (class-of obj))
+                  collect (list
+                           (c2mop:slot-definition-name sl)
+                           (slot-value obj (c2mop:slot-definition-name sl)))))))
+
 (defun next-freespace (ftable &optional (start 0) (end (hash-table-count ftable))) ;need better end conditions
   (loop for idx from start below end
         for fb = (gethash idx ftable)
         when (and (not (null fb))
                   (minusp (file-id fb)))
-          return (values fb (block-length fb))))
+          return (values fb (block-length fb))
+        finally (return (gethash 0 ftable))))
 
 (defun next-filespace (ftable &optional (start (hash-table-count ftable)) (end 0))
   (loop for idx downfrom start to end
         for fb = (gethash idx ftable)
         when (and (not (null fb))
                   (not (minusp (file-id fb))))
-          return (values fb (block-length fb))))
+          return (values fb (block-length fb))
+        finally (return (gethash (hash-table-count ftable) ftable))))
 
 (defun split-fileblock (fb size)
   (let* ((old-size (block-length fb))
@@ -66,6 +78,7 @@
         (error "Not enough room to move block ~a to block ~a" src-block dst-block))))
 
 (defun parse-input (input-string &optional (block-length 1))
+  (declare (optimize (debug 3) (speed 0) (safety 3) (space 0)))
   (loop with fat = (make-hash-table :size (* 2 (length input-string)))
         with skip = block-length
         for file-id   from 0
@@ -115,14 +128,21 @@
        ((< max-idx min-idx)
         (checksum ftable))    
     (cond ((plusp diff)
-           (princ "splitting")
+           (pprint "splitting file")
            (setf src-blk (split-fileblock src-blk (- (block-length src-blk) diff))
                  max-idx (+ max-idx 1)
-                 (gethash max-idx ftable) src-blk))
+                 (gethash max-idx ftable) src-blk)
+           (swap-fileblocks ftable max-idx min-idx)
+           (incf max-idx))
           ((minusp diff)
-           ;split the free space
-           ))
-    (swap-fileblocks ftable max-idx min-idx))) 
+           (pprint "splitting free")
+           (setf dst-blk (split-fileblock dst-blk (+ (block-length dst-blk) diff))
+               ;;  min-idx (- min-idx 1)
+                 (gethash min-idx ftable) dst-blk)
+           (swap-fileblocks ftable max-idx min-idx)
+           (incf min-idx))
+          (t (swap-fileblocks ftable max-idx min-idx))))
+  ftable) 
 
 (defun p2 ()
   )
