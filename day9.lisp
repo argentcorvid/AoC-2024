@@ -38,9 +38,10 @@
   (loop for idx from start below end
         for fb = (gethash idx ftable)
         when (and (not (null fb))
-                  (minusp (file-id fb)))
+                  (minusp (file-id fb))
+                  (plusp  (block-length fb)))
           return (values fb (block-length fb))
-        finally (return (gethash 0 ftable))))
+        finally (return (gethash 0 ftable)))) 
 
 (defun next-filespace (ftable &optional (start (hash-table-count ftable)) (end 0))
   (loop for idx downfrom start to end
@@ -50,9 +51,11 @@
           return (values fb (block-length fb))
         finally (return (gethash (hash-table-count ftable) ftable))))
 
-(defun split-fileblock (fb size)
+(defun split-fileblock (fb size &key (free nil))
   (let* ((old-size (block-length fb))
-         (new-loc  (+ 1 size (current-location fb))))
+         (new-loc  (if free
+                       (current-location fb)
+                       (+ 1 size (current-location fb)))))
     (loop
       (when (<= size old-size)
         (return))
@@ -60,7 +63,7 @@
       (format t "~&New size: ")
       (setq size (read))
       (fresh-line))
-    (decf (block-length fb) size)
+    (setf (block-length fb) (- old-size size))
     (make-instance 'fileblock
                    :file-id (file-id fb)
                    :initial-location new-loc
@@ -89,12 +92,9 @@
                                   (gethash (1- file-str-pos) fat)
                                 (+ len loc))
         do (setf (gethash file-str-pos fat)
-                 (make-instance 'fileblock :file-id (multiple-value-bind
-                                                          (q r)
+                 (make-instance 'fileblock :file-id (if (evenp file-id)
                                                         (floor file-id 2)
-                                                      (if (zerop r)
-                                                          q
-                                                          -1))
+                                                        -1)
                                            :initial-location file-pos ;no, need expanded posns
                                            :current-location file-pos
                                            :block-length file-size))
@@ -117,30 +117,25 @@
     sum))
 
 (defun p1 (ftable)
-  (do* ((max-idx (1- (hash-table-count ftable)) (- max-idx 2))
-        (min-idx 1 (+ min-idx 2))
+  (do* ((max-idx (1- (hash-table-count ftable)) (current-location src-blk))
+        (min-idx 1 (current-location dst-blk))
         (src-blk (next-filespace ftable max-idx)
                  (next-filespace ftable max-idx))
         (dst-blk (next-freespace ftable min-idx)
                  (next-freespace ftable min-idx))
         (diff (- (block-length src-blk) (block-length dst-blk) )
               (- (block-length src-blk) (block-length dst-blk) )))
-       ((< max-idx min-idx)
+       ((< (current-location src-blk) (current-location dst-blk))
         (checksum ftable))    
     (cond ((plusp diff)
            (pprint "splitting file")
            (setf src-blk (split-fileblock src-blk (- (block-length src-blk) diff))
-                 max-idx (+ max-idx 1)
-                 (gethash max-idx ftable) src-blk)
-           (swap-fileblocks ftable max-idx min-idx)
-           (incf max-idx))
+                 (gethash (hash-table-count ftable) ftable) src-blk)
+           (swap-fileblocks ftable (hash-table-count ftable) min-idx))
           ((minusp diff)
            (pprint "splitting free")
-           (setf dst-blk (split-fileblock dst-blk (+ (block-length dst-blk) diff))
-               ;;  min-idx (- min-idx 1)
-                 (gethash min-idx ftable) dst-blk)
-           (swap-fileblocks ftable max-idx min-idx)
-           (incf min-idx))
+           (setf (gethash (hash-table-count ftable) ftable) (split-fileblock dst-blk (+ (block-length dst-blk) diff) :free t))
+           (swap-fileblocks ftable max-idx min-idx))
           (t (swap-fileblocks ftable max-idx min-idx))))
   ftable) 
 
