@@ -47,22 +47,21 @@
         (current-free (first free) (find-if #'not-full free))
         (ft-out (list)))
        ((or (< (length used) stopl)
-            (notany #'not-full free))
+            (null current-free))
         (sort (append ft-out used) #'< :key #'car))
-    (loop
-      (let ((file-size (third current-file))
-            (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
-        (if (< free-size file-size)
-            (destructuring-bind (file remainder)
-                (split current-file free-size)              ;;split file
-              (a:appendf (fourth current-free) (list file)) ;;move correct part to free
-              (push current-free ft-out) ;;done with that 'free' block, collect it
-              (setf current-free (find-if #'not-full free)) ;;find next free
-              (setf current-file remainder)) ;;end-if, go through the loop again and possibly split the file more
-            (progn                           ;;else move file into free
-              (a:appendf (fourth current-free) (list current-file))
-              (push current-free ft-out)
-              (return)))))))
+    (let ((file-size (third current-file))
+          (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
+      (if (< free-size file-size)
+          (destructuring-bind (file remainder)
+              (split current-file free-size)              ;;split file
+            (a:appendf (fourth current-free) (list file)) ;;move correct part to free
+            (push current-free ft-out) ;;done with that 'free' block, collect it
+            (push remainder used) ;;end-if, go through the loop again and possibly split the file more
+            ) 
+          
+          (progn ;;else move file into free
+            (a:appendf (fourth current-free) (list current-file))
+            (push current-free ft-out))))))
 
 (defun split (fb needed-size)
   (destructuring-bind (pos id size) fb
