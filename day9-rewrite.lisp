@@ -28,14 +28,21 @@
             collect (list idx (floor idx 2) size) into used
         when (and (oddp idx)
                   (plusp size))
-            collect (list idx size) into free
+            collect (list idx nil size) into free
         finally (return (list used free))))
 
-(defun p1 (drive-map)
-  (destructuring-bind (used free)
-      drive-map
-    (dolist (file (reverse used))
-      ))) 
+(defun p1 (fileblocks)
+  (let ((empty (a:compose (a:curry #'< 3) #'length)))
+    (loop with (used free) = fileblocks
+          for file-idx downfrom (length used)
+          do (let ((free-idx (position-if empty free)))
+               ))))
+
+(defun split (fb needed-size)
+  (destructuring-bind (pos id size) fb
+    (assert (<= needed-size size) (needed-size)
+            "requested size ~a is too large for file block with size ~a" needed-size size)
+    `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
 
 (defun p2 ()
   )
@@ -47,9 +54,8 @@
       (2 (format t "~&Part 2: ~a" (p2 data))))))
 
 (defun main (&rest parts)
-  (let* ((infile-name (format nil *input-name-template* *day-number*))
-         (data (parse-input uiop:read-file-string infile-name)))
-    (run parts data)))
+  (let* ((infile-name (format nil *input-name-template* *day-number*)))
+    (run parts (parse-input (uiop:read-file-string infile-name)))))
 
 (defun test (&rest parts)
   (run parts (parse-input *test-input*)))
