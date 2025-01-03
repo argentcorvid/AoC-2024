@@ -28,15 +28,41 @@
             collect (list idx (floor idx 2) size) into used
         when (and (oddp idx)
                   (plusp size))
-            collect (list idx nil size) into free
+            collect (list idx nil size nil) into free
         finally (return (list used free))))
 
+(defun not-full (itm)
+  (or (null (fourth itm))
+      (> (third itm) (used-space itm))))
+
+(defun used-space (free-block)
+  (reduce #'+ (mapcar #'a:lastcar (fourth free-block))))
+
 (defun p1 (fileblocks)
-  (let ((empty (a:compose (a:curry #'< 3) #'length)))
-    (loop with (used free) = fileblocks
-          for file-idx downfrom (length used)
-          do (let ((free-idx (position-if empty free)))
-               ))))
+  (declare (optimize (speed 0) (debug 3)))
+  (do* ((used (reverse (first fileblocks)))
+        (stopl (floor (length used) 2))
+        (free (second fileblocks))
+        (current-file (pop used) (pop used))
+        (current-free (first free) (find-if #'not-full free))
+        (ft-out (list)))
+       ((or (< (length used) stopl)
+            (notany #'not-full free))
+        (sort (append ft-out used) #'< :key #'car))
+    (loop
+      (let ((file-size (third current-file))
+            (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
+        (if (< free-size file-size)
+            (destructuring-bind (file remainder)
+                (split current-file free-size)              ;;split file
+              (a:appendf (fourth current-free) (list file)) ;;move correct part to free
+              (push current-free ft-out) ;;done with that 'free' block, collect it
+              (setf current-free (find-if #'not-full free)) ;;find next free
+              (setf current-file remainder)) ;;end-if, go through the loop again and possibly split the file more
+            (progn                           ;;else move file into free
+              (a:appendf (fourth current-free) (list current-file))
+              (push current-free ft-out)
+              (return)))))))
 
 (defun split (fb needed-size)
   (destructuring-bind (pos id size) fb
