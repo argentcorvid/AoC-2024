@@ -38,6 +38,14 @@
 (defun used-space (free-block)
   (reduce #'+ (mapcar #'a:lastcar (fourth free-block))))
 
+(defun ft-flatten (ft)
+  (loop for (seq id size moved) in ft
+        unless (null id)
+          collect (list seq id size)
+        else
+          append (loop for (orig-seq id size) in moved
+                       collect (list seq id size))))
+
 (defun p1 (fileblocks)
   (declare (optimize (speed 0) (debug 3)))
   (do* ((used (reverse (first fileblocks)))
@@ -54,7 +62,7 @@
           (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
       (if (< free-size file-size)
           (destructuring-bind (file remainder)
-              (split current-file free-size)              ;;split file
+              (split current-file free-size) ;;split file
             (a:appendf (fourth current-free) (list file)) ;;move correct part to free
             (push current-free ft-out) ;;done with that 'free' block, collect it
             (push remainder used) ;;end-if, go through the loop again and possibly split the file more
