@@ -52,15 +52,19 @@
             "requested size ~a is too large for file block with size ~a" needed-size size)
     `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
 
-(defun checksum (raw-ft)
-  (loop for (seq id len) integer in (ft-flatten raw-ft)
-        for idx = 0 then (+ idx len)
-        sum (loop for i upfrom idx
+(defun checksum (raw-ft &key (debug nil))
+  (loop with prevlen = 0
+        for (seq id len) integer in (ft-flatten raw-ft)
+        for idx = 0 then (+ idx prevlen)
+        when debug
+          do (format t "~&~a: idx:~a " (list seq id len) idx)
+        sum (loop for i from idx
                   repeat len
-                  sum (* id i))))
+                  sum (* id i)
+                  when debug do (format t "~a * ~a = ~a, " id i (* id i)))
+        do (setf prevlen len)))
 
 (defun p1 (fileblocks)
-  (declare (optimize (speed 0) (debug 3)))
   (do* ((used (reverse (first fileblocks)))
         (stopl (floor (length used) 2))
         (free (copy-list (second fileblocks)))
@@ -81,7 +85,9 @@
           
       (a:appendf (fourth current-free) (list current-file))
       (unless (not-full current-free)
-        (push current-free ft-out)))))
+        (push current-free ft-out)
+        (a:removef free current-free :test #'equal) ;SHOULD be the first one, so SHOULDNT have to look through the whole list
+        ))))
 
 (defun p2 ()
   )
@@ -89,7 +95,7 @@
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
-      (1 (format t "~&Part 1: ~a" (p1 data)))
+      (1 (format t "~&Part 1: ~a" (checksum (p1 data))))
       (2 (format t "~&Part 2: ~a" (p2 data))))))
 
 (defun main (&rest parts)
