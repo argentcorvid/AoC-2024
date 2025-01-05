@@ -46,6 +46,19 @@
           append (loop for (orig-seq id size) in moved
                        collect (list seq id size))))
 
+(defun split (fb needed-size)
+  (destructuring-bind (pos id size) fb
+    (assert (<= needed-size size) (needed-size)
+            "requested size ~a is too large for file block with size ~a" needed-size size)
+    `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
+
+(defun checksum (raw-ft)
+  (loop for (seq id len) integer in (ft-flatten raw-ft)
+        for idx = 0 then (+ idx len)
+        sum (loop for i upfrom idx
+                  repeat len
+                  sum (* id i))))
+
 (defun p1 (fileblocks)
   (declare (optimize (speed 0) (debug 3)))
   (do* ((used (reverse (first fileblocks)))
@@ -60,23 +73,15 @@
         (sort (append ft-out used) #'< :key #'car))
     (let ((file-size (third current-file))
           (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
-      (if (< free-size file-size)
-          (destructuring-bind (file remainder)
-              (split current-file free-size) ;;split file
-            (a:appendf (fourth current-free) (list file)) ;;move correct part to free
-            (push current-free ft-out) ;;done with that 'free' block, collect it
-            (push remainder used) ;;end-if, go through the loop again and possibly split the file more
-            ) 
+      (when (< free-size file-size)
+        (destructuring-bind (file remainder)
+            (split current-file free-size) ;;split file
+          (setf current-file file)
+          (push remainder used))) 
           
-          (progn ;;else move file into free
-            (a:appendf (fourth current-free) (list current-file))
-            (push current-free ft-out))))))
-
-(defun split (fb needed-size)
-  (destructuring-bind (pos id size) fb
-    (assert (<= needed-size size) (needed-size)
-            "requested size ~a is too large for file block with size ~a" needed-size size)
-    `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
+      (a:appendf (fourth current-free) (list current-file))
+      (unless (not-full current-free)
+        (push current-free ft-out)))))
 
 (defun p2 ()
   )
