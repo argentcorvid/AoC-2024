@@ -16,7 +16,7 @@
 
 (defparameter *simple-input*
   "12345"
-  "p1 checksum: 44")
+  "p1 checksum: 60")
 
 
 (defun parse-input (input-string)
@@ -53,8 +53,8 @@
     `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
 
 (defun checksum (raw-ft &key (debug nil))
-  (loop with prevlen = 0
-        for (seq id len) integer in (ft-flatten raw-ft)
+  (loop for (seq id len) integer in (ft-flatten raw-ft)
+        with prevlen = 0
         for idx = 0 then (+ idx prevlen)
         when debug
           do (format t "~&~a: idx:~a " (list seq id len) idx)
@@ -73,7 +73,9 @@
         (ft-out (list)))
        ((or (<= (length used) stopl)
             (null current-free))
+        (break)
         (push current-file used)
+        (unless (null current-free) (push current-free ft-out))
         (sort (append ft-out used) #'< :key #'car))
     (let ((file-size (third current-file))
           (free-size (- (third current-free) (used-space current-free)))) ;;need to subtract any moved in here
