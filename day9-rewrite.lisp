@@ -86,7 +86,8 @@
       (a:appendf (fourth current-free) (list current-file))
       (unless (not-full current-free)
         (push current-free ft-out)
-        (a:removef free current-free :test #'equal) ;SHOULD be the first one, so SHOULDNT have to look through the whole list
+     ;;   (a:removef free current-free :test #'equal) ;SHOULD be the first one, so SHOULDNT have to look through the whole list
+        (pop free)  ;; indeed.
         ))))
 
 (defun p2 ()
