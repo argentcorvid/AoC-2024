@@ -24,15 +24,19 @@
         for size = (- (char-code ch) 48)
         for idx from 0
         when (and (evenp idx)
-                  (plusp size))
+                  (plusp size)
+                  )
             collect (list idx (floor idx 2) size) into used
         when (and (oddp idx)
-                  (plusp size))
+                  (plusp size)
+                  )
             collect (list idx nil size nil) into free
         finally (return (list used free))))
 
 (defun not-full (itm)
-  (or (null (fourth itm))
+  (or (and (null (fourth itm))
+          ; (plusp (third itm))
+           )
       (> (third itm) (used-space itm))))
 
 (defun used-space (free-block)
@@ -64,6 +68,15 @@
                   when debug do (format t "~a * ~a = ~a, " id i (* id i)))
         do (setf prevlen len)))
 
+(defun checksum2 (raw-ft)
+  (let* ((ft (ft-flatten raw-ft))
+         (number-of-elements (reduce #'+ (mapcar #'third ft)))
+         (positions (a:iota number-of-elements :start 0))
+         (file-ids (mapcan (lambda (fb)
+                             (make-list (third fb) :initial-element (second fb)))
+                           ft)))
+    (reduce #'+ (mapcar #'* positions file-ids))))
+
 (defun p1 (fileblocks)
   (do* ((used (reverse (first fileblocks)))
         (stopl (floor (length used) 2))
@@ -73,7 +86,7 @@
         (ft-out (list)))
        ((or (<= (length used) stopl)
             (null current-free))
-        (break)
+                                        ;(break)
         (push current-file used)
         (unless (null current-free) (push current-free ft-out))
         (sort (append ft-out used) #'< :key #'car))
@@ -88,8 +101,8 @@
       (a:appendf (fourth current-free) (list current-file))
       (unless (not-full current-free)
         (push current-free ft-out)
-     ;;   (a:removef free current-free :test #'equal) ;SHOULD be the first one, so SHOULDNT have to look through the whole list
-        (pop free)  ;; indeed.
+        ;;   (a:removef free current-free :test #'equal) ;SHOULD be the first one, so SHOULDNT have to look through the whole list
+        (pop free) ;; indeed.
         ))))
 
 (defun p2 ()
