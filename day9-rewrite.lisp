@@ -20,17 +20,21 @@
 
 
 (defun parse-input (input-string)
+  "turn a string of numeric digits into a map of a file system
+returns a list of two entries: first is the list of files, each a list representing (sequence file-id length)
+the second is a similar list for the free spaces, each entry in the form (sequence nil length (list of moved files, initially empty)"
   (loop for ch across input-string
-        for size = (- (char-code ch) 48)
+        for size = (digit-char-p ch)
         for idx from 0
+        until (null ch)
         when (and (evenp idx)
                   (plusp size)
                   )
-            collect (list idx (floor idx 2) size) into used
+          collect (list idx (floor idx 2) size) into used
         when (and (oddp idx)
                   (plusp size)
                   )
-            collect (list idx nil size nil) into free
+          collect (list idx nil size nil) into free
         finally (return (list used free))))
 
 (defun not-full (itm)
@@ -43,6 +47,7 @@
   (reduce #'+ (mapcar #'a:lastcar (fourth free-block))))
 
 (defun ft-flatten (ft)
+  "given a processed filetable sorted by the sequence entry, promote the moved file entries to the top level, maintining their order."
   (loop for (seq id size moved) in ft
         unless (null id)
           collect (list seq id size)
@@ -51,12 +56,14 @@
                        collect (list seq id size))))
 
 (defun split (fb needed-size)
+  "split a file block into two parts, one of the requested size and one with the remainder"
   (destructuring-bind (pos id size) fb
     (assert (<= needed-size size) (needed-size)
             "requested size ~a is too large for file block with size ~a" needed-size size)
     `((,pos ,id ,needed-size) (,pos ,id ,(- size needed-size)))))
 
 (defun checksum (raw-ft &key (debug nil))
+  "flatten the filetable and then calculate pos*id for each position"
   (loop for (seq id len) integer in (ft-flatten raw-ft)
         with prevlen = 0
         for idx = 0 then (+ idx prevlen)
@@ -78,6 +85,7 @@
     (reduce #'+ (mapcar #'* positions file-ids))))
 
 (defun p1 (fileblocks)
+  "move fileblocks from the end of the file table, and put them into the free spaces at the beginning."
   (do* ((used (reverse (first fileblocks)))
         (stopl (floor (length used) 2))
         (free (copy-list (second fileblocks)))
