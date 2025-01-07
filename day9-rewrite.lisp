@@ -113,8 +113,34 @@ the second is a similar list for the free spaces, each entry in the form (sequen
         (pop free) ;; indeed.
         ))))
 
-(defun p2 ()
-  )
+(defun find-space (freeblocks file)
+  (destructuring-bind (file-index file-id file-size)
+      file
+    (declare (ignore file-id))
+    (let ((max-free-pos (position-if-not (a:curry #'< file-index) freeblocks :key #'first)))
+      (find-if (lambda (free)
+                 (destructuring-bind (free-index free-id free-size moved )
+                     free
+                   (declare (ignore free-id moved))
+                   (and (< free-index file-index)
+                    (<= file-size (- free-size (used-space free))))))
+               freeblocks
+               :end max-free-pos
+               ))))
+
+(defun p2 (fileblocks)
+  "move the files from the end to the first free block at the front with enough free space"
+  (let ((used (reverse (first fileblocks)))
+        (free (copy-list (second fileblocks)))
+        (ft-out (list)))
+    (loop
+      (when (endp used)
+        (return-from p2 (sort (append ft-out free) #'< :key #'first)))
+      (let* ((current-file (pop used))
+             (current-free (find-space free current-file)))
+        (if (null current-free)
+            (push current-file ft-out)
+            (a:appendf (fourth current-free) (list current-file)))))))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
