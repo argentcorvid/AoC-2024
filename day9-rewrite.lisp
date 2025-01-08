@@ -143,9 +143,12 @@ the second is a similar list for the free spaces, each entry in the form (sequen
                    pattern
                  (declare (ignore pid))
                  (let ((new-free (list ps nil pl nil))
-                       (before (position-if (a:rcurry #'< ps) free :from-end t :key #'first))
+                       ;(before (position-if (a:rcurry #'< ps) free :from-end t :key #'first))
                        (after (position-if (a:rcurry #'> ps) free :key #'first)))
-                   )))
+                   (nconc (subseq free 0 after ;(1+ before)
+                                 )
+                         (list new-free)
+                         (subseq free after)))))
              (grow-previous (file)
                "alternative to splicing, just grow the preceeding free space by the size of the file that was moved"))
       (loop
