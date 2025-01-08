@@ -44,13 +44,15 @@ the second is a similar list for the free spaces, each entry in the form (sequen
       (> (third itm) (used-space itm))))
 
 (defun used-space (free-block)
-  (reduce #'+ (mapcar #'a:lastcar (fourth free-block))))
+  (reduce #'+ (mapcar #'a:lastcar (fourth free-block)))) 
 
 (defun ft-flatten (ft)
   "given a processed filetable sorted by the sequence entry, promote the moved file entries to the top level, maintining their order."
   (loop for (seq id size moved) in ft
         unless (null id)
           collect (list seq id size)
+        else when (null moved)
+               collect (list seq 0 size)
         else
           append (loop for (orig-seq id size) in moved
                        collect (list seq id size))))
@@ -117,7 +119,7 @@ the second is a similar list for the free spaces, each entry in the form (sequen
   (destructuring-bind (file-index file-id file-size)
       file
     (declare (ignore file-id))
-    (let ((max-free-pos (position-if-not (a:curry #'< file-index) freeblocks :key #'first)))
+    (let ((max-free-pos (position-if-not (a:curry #'> file-index) freeblocks :key #'first)))
       (find-if (lambda (free)
                  (destructuring-bind (free-index free-id free-size moved )
                      free
@@ -138,7 +140,7 @@ the second is a similar list for the free spaces, each entry in the form (sequen
         (return-from p2 (sort (append ft-out free) #'< :key #'first)))
       (let* ((current-file (pop used))
              (current-free (find-space free current-file)))
-        (if (null current-free)
+        (if (null current-free) ;need to account for holes left behind when moving.
             (push current-file ft-out)
             (a:appendf (fourth current-free) (list current-file)))))))
 
