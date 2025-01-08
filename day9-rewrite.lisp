@@ -18,6 +18,15 @@
   "12345"
   "p1 checksum: 60")
 
+(defun file-table-to-string (flat-table)
+  (loop for (idx id length) in flat-table
+        collect (make-string length :initial-element (cond ((zerop idx)
+                                                            (digit-char id))
+                                                           ((zerop id)
+                                                            #\.)
+                                                           (t (digit-char id))))
+        into out
+        finally (return (reduce (a:curry #'concatenate 'string) out))))
 
 (defun parse-input (input-string)
   "turn a string of numeric digits into a map of a file system
@@ -143,14 +152,15 @@ the second is a similar list for the free spaces, each entry in the form (sequen
                    pattern
                  (declare (ignore pid))
                  (let ((new-free (list ps nil pl nil))
-                       ;(before (position-if (a:rcurry #'< ps) free :from-end t :key #'first))
-                       (after (position-if (a:rcurry #'> ps) free :key #'first)))
-                   (nconc (subseq free 0 after ;(1+ before)
-                                 )
-                         (list new-free)
-                         (subseq free after)))))
-             (grow-previous (file)
-               "alternative to splicing, just grow the preceeding free space by the size of the file that was moved"))
+                                        ;(before (position-if (a:rcurry #'< ps) free :from-end t :key #'first))
+                       (after (or (position-if (a:rcurry #'> ps) free :key #'first)
+                                  (length free))))
+                   (nconc (subseq free 0 after) ;(1+ before)
+                          (list new-free)
+                          (subseq free after)))))
+             (grow-previous-free (file)
+               "alternative to splicing, just grow the preceeding free space by the size of the file that was moved"
+               ))
       (loop
         (when (endp used)
           (return-from p2 (sort (append ft-out free) #'< :key #'first)))
@@ -158,7 +168,7 @@ the second is a similar list for the free spaces, each entry in the form (sequen
                (current-free (find-space free current-file)))
           (if (null current-free) ;need to account for holes left behind when moving.
               (push current-file ft-out)
-              (a:appendf (fourth current-free) (list current-file))))))))
+              (setf free (move-block current-file current-free))))))))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
