@@ -57,14 +57,18 @@ the second is a similar list for the free spaces, each entry in the form (sequen
 
 (defun ft-flatten (ft)
   "given a processed filetable sorted by the sequence entry, promote the moved file entries to the top level, maintining their order."
-  (loop for (seq id size moved) in ft
+  (loop for fb in ft
+        for (seq id size moved) = fb
+        for us = (used-space fb)
         unless (null id)
           collect (list seq id size)
         else when (null moved)
                collect (list seq 0 size)
         else
-          append (loop for (orig-seq id size) in moved
-                       collect (list seq id size))))
+          append (loop for (orig-seq mid msize) in moved
+                       collect (list seq mid msize)
+                       when (< us size) ; account for not-fully filled freeblock
+                         collect (list seq 0 (- size us)))))
 
 (defun split (fb needed-size)
   "split a file block into two parts, one of the requested size and one with the remainder"
@@ -174,7 +178,7 @@ the second is a similar list for the free spaces, each entry in the form (sequen
   (dolist (part (a:ensure-list parts-list))
     (ccase part
       (1 (format t "~&Part 1: ~a" (checksum (p1 data))))
-      (2 (format t "~&Part 2: ~a" (p2 data))))))
+      (2 (format t "~&Part 2: ~a" (checksum (p2 data)))))))
 
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*)))
