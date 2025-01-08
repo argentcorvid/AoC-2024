@@ -35,7 +35,7 @@ the second is a similar list for the free spaces, each entry in the form (sequen
   (loop for ch across input-string
         for size = (digit-char-p ch)
         for idx from 0
-        until (null ch)
+        until (null size)
         when (and (evenp idx)
                   (plusp size)
                   )
