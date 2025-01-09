@@ -146,6 +146,14 @@ the second is a similar list for the free spaces, each entry in the form (sequen
                :end max-free-pos
                ))))
 
+(defun sort-free-to-bins (freeblocks)
+  "reduce search space by separating freeblocks by size"
+  (let ((bins (make-list 10)))
+    (dolist (fb freeblocks
+                (loop for bin in bins
+                      collect (nreverse bin)))
+      (push fb (nth (third fb) bins)))))
+
 (defun p2 (fileblocks)
   "move the files from the end to the first free block at the front with enough free space"
   (let ((used (reverse (first fileblocks)))
