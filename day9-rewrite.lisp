@@ -53,7 +53,10 @@ the second is a similar list for the free spaces, each entry in the form (sequen
       (> (third itm) (used-space itm))))
 
 (defun used-space (free-block)
-  (reduce #'+ (mapcar #'a:lastcar (fourth free-block)))) 
+  ;(reduce #'+ (mapcar #'a:lastcar (fourth free-block)))
+  (loop with used-list = (fourth free-block)
+        for moved in used-list
+        summing (a:lastcar moved))) 
 
 (defun ft-flatten (ft)
   "given a processed filetable sorted by the sequence entry, promote the moved file entries to the top level, maintining their order."
