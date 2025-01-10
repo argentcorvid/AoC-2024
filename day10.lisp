@@ -56,12 +56,14 @@
   score: 36")
 
 (defvar *directions*
-  '(#c(-1 0) #c(0 1) #c(1 0) #c(0 -1)))
+  '((-1 0) (0 1) (1 0) (0 -1)))
+
+(defparameter *out-of-bounds-value* -1)
 
 (defun parse-input (lines)
   (loop with map-rows = (length lines)
         with map-cols  = (length (first lines))
-        with grid = (make-array (list map-rows map-cols) :element-type 'fixnum :initial-element -1)
+        with grid = (make-array (list map-rows map-cols) :element-type 'fixnum :initial-element *out-of-bounds-value*)
         for row in lines
         and row-number from 0
         nconcing (loop for spot across row
@@ -74,21 +76,26 @@
         into heads
         finally (return (values grid heads))))
 
-(defun next-trail-points (current-point)
+(defun next-trail-points (current-point &optional (allowed-difference 1))
   (let ((next-points (list))
-        (c-point (apply #'complex current-point)))
+       ;; (c-point (apply #'complex current-point))
+        )
+    (declare (special map-grid))
     (dolist (look-dir *directions* (nreverse next-points))
-      (let* ((cand-point (mapcar #'+ current-point look-dir))
-             (candidate (apply #'aref map cand-point))
-             (current-height (apply #'aref map current-point) ))
-        (when (and (plusp candidate)
-                   (= 1 (- candidate current-height)))
+      (let* ((cand-point (mapcar #'+ current-point look-dir)) ;; do i want to use complexes or lists?
+             (candidate (handler-case (apply #'aref map-grid cand-point)
+                          (error () *out-of-bounds-value*)))
+             (current-height (apply #'aref map-grid current-point)))
+        (when (and (/= candidate *out-of-bounds-value*)
+                   (= allowed-difference (- candidate current-height)))
           (push cand-point next-points))))))
 
 (defun p1 (map-grid trailheads)
-  ) 
+  (declare (special map-grid))
+  )
 
 (defun p2 (map-grid trailheads)
+  (declare (special map-grid))
   )
 
 (defun run (parts-list grid trailheads)
