@@ -60,7 +60,11 @@
 
 (defparameter *out-of-bounds-value* -1)
 
+(defparameter *trail-start* 0)
+(defparameter *trail-end*   9)
+
 (defun parse-input (lines)
+  (typecase lines (string (setf lines (str:split-omit-nulls #\newline lines)))) ;keep forgetting to split test inputs
   (loop with map-rows = (length lines)
         with map-cols  = (length (first lines))
         with grid = (make-array (list map-rows map-cols) :element-type 'fixnum :initial-element *out-of-bounds-value*)
@@ -71,9 +75,9 @@
                        for ch = (digit-char-p spot)
                        unless (null ch)
                          do (setf (aref grid row-number col-number) ch)
-                         and when (zerop ch)
-                         collect (list row-number col-number))
-        into heads
+                         and when (= *trail-start* ch)
+                               collect (list row-number col-number))
+          into heads
         finally (return (values grid heads))))
 
 (defun next-trail-points (current-point &optional (allowed-difference 1))
@@ -90,9 +94,26 @@
                    (= allowed-difference (- candidate current-height)))
           (push cand-point next-points))))))
 
+(defun sum-of-trail-scores (trailscores)
+  (reduce #'+ (a:hash-table-values trailscores)))
+
 (defun p1 (map-grid trailheads)
   (declare (special map-grid))
-  )
+  (labels ((walk-trail (point)
+             "return number of times you can reach height 9, starting from the given point"
+             (if (= *trail-end* (apply #'aref map-grid point));need to add already found check
+                 (return-from walk-trail 1))
+             (let ((path-cands (next-trail-points point))
+                   (this-level-accum 0))  
+               (loop (when (endp path-cands)
+                       (return-from walk-trail this-level-accum))
+                     (incf this-level-accum (walk-trail (pop path-cands)))))))
+    (let ((trails-from-head (make-hash-table :test 'equal)))
+      (dolist (head trailheads
+                    (sum-of-trail-scores trails-from-head))
+        (let ((head-score (walk-trail head)))
+          (when (plusp head-score)
+            (setf (gethash head trails-from-head) head-score)))))))
 
 (defun p2 (map-grid trailheads)
   (declare (special map-grid))
@@ -110,4 +131,4 @@
     (multiple-value-call #'run parts (parse-input input-lines))))
 
 (defun test (&rest parts)
-  (multiple-value-call #'run parts (parse-input *test-input*)))
+  (multiple-value-call #'run parts (parse-input *big-test-input*)))
