@@ -56,7 +56,7 @@
   score: 36")
 
 (defvar *directions*
-  #(#c(-1 0) #c(0 1) #c(1 0) #c(0 -1)))
+  '(#c(-1 0) #c(0 1) #c(1 0) #c(0 -1)))
 
 (defun parse-input (lines)
   (loop with map-rows = (length lines)
@@ -74,10 +74,21 @@
         into heads
         finally (return (values grid heads))))
 
-(defun p1 ()
+(defun next-trail-points (current-point)
+  (let ((next-points (list))
+        (c-point (apply #'complex current-point)))
+    (dolist (look-dir *directions* (nreverse next-points))
+      (let* ((cand-point (mapcar #'+ current-point look-dir))
+             (candidate (apply #'aref map cand-point))
+             (current-height (apply #'aref map current-point) ))
+        (when (and (plusp candidate)
+                   (= 1 (- candidate current-height)))
+          (push cand-point next-points))))))
+
+(defun p1 (map-grid trailheads)
   ) 
 
-(defun p2 ()
+(defun p2 (map-grid trailheads)
   )
 
 (defun run (parts-list grid trailheads)
