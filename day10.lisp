@@ -98,12 +98,13 @@
 (defun sum-of-trail-scores (trailscores)
   (reduce #'+ (a:hash-table-values trailscores)))
 
-(defun p1 (map-grid trailheads)
+(defun p1 (map-grid trailheads &optional (p2 nil))
   (declare (special map-grid))
   (labels ((walk-trail (point)
              "return number of times you can reach height 9, starting from the given point"
              (declare (special seen))
-             (push point seen)
+             (unless p2
+               (push point seen))
              (if (= *trail-end* (apply #'aref map-grid point)) ;need to add already found check
                  (return-from walk-trail 1))
              (let ((path-cands (next-trail-points point))
@@ -121,8 +122,7 @@
               (setf (gethash head trails-from-head) head-score))))))))
 
 (defun p2 (map-grid trailheads)
-  (declare (special map-grid))
-  )
+  (p1 map-grid trailheads t))
 
 (defun run (parts-list grid trailheads)
   (dolist (part (a:ensure-list parts-list))
