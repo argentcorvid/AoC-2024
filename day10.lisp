@@ -84,14 +84,15 @@
   (let ((next-points (list))
        ;; (c-point (apply #'complex current-point))
         )
-    (declare (special map-grid))
+    (declare (special map-grid seen))
     (dolist (look-dir *directions* (nreverse next-points))
       (let* ((cand-point (mapcar #'+ current-point look-dir)) ;; do i want to use complexes or lists?
              (candidate (handler-case (apply #'aref map-grid cand-point)
                           (error () *out-of-bounds-value*)))
              (current-height (apply #'aref map-grid current-point)))
         (when (and (/= candidate *out-of-bounds-value*)
-                   (= allowed-difference (- candidate current-height)))
+                   (= allowed-difference (- candidate current-height))
+                   (not (member cand-point seen :test #'equal)))
           (push cand-point next-points))))))
 
 (defun sum-of-trail-scores (trailscores)
@@ -101,7 +102,9 @@
   (declare (special map-grid))
   (labels ((walk-trail (point)
              "return number of times you can reach height 9, starting from the given point"
-             (if (= *trail-end* (apply #'aref map-grid point));need to add already found check
+             (declare (special seen))
+             (push point seen)
+             (if (= *trail-end* (apply #'aref map-grid point)) ;need to add already found check
                  (return-from walk-trail 1))
              (let ((path-cands (next-trail-points point))
                    (this-level-accum 0))  
@@ -111,9 +114,11 @@
     (let ((trails-from-head (make-hash-table :test 'equal)))
       (dolist (head trailheads
                     (sum-of-trail-scores trails-from-head))
-        (let ((head-score (walk-trail head)))
-          (when (plusp head-score)
-            (setf (gethash head trails-from-head) head-score)))))))
+        (let ((seen (list)))
+          (declare (special seen))
+          (let ((head-score (walk-trail head)))
+            (when (plusp head-score)
+              (setf (gethash head trails-from-head) head-score))))))))
 
 (defun p2 (map-grid trailheads)
   (declare (special map-grid))
