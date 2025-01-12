@@ -100,26 +100,21 @@
 
 (defun p1 (map-grid trailheads &optional (p2 nil))
   (declare (special map-grid))
-  (labels ((walk-trail (point)
-             "return number of times you can reach height 9, starting from the given point"
-             (declare (special seen))
-             (unless p2
-               (push point seen))
-             (if (= *trail-end* (apply #'aref map-grid point)) ;need to add already found check
-                 (return-from walk-trail 1))
-             (let ((path-cands (next-trail-points point))
-                   (this-level-accum 0))  
-               (loop (when (endp path-cands)
-                       (return-from walk-trail this-level-accum))
-                     (incf this-level-accum (walk-trail (pop path-cands)))))))
-    (let ((trails-from-head (make-hash-table :test 'equal)))
-      (dolist (head trailheads
-                    (sum-of-trail-scores trails-from-head))
-        (let ((seen (list)))
-          (declare (special seen))
-          (let ((head-score (walk-trail head)))
-            (when (plusp head-score)
-              (setf (gethash head trails-from-head) head-score))))))))
+  (let ((trails-from-head (make-hash-table :test 'equal)))
+    (dolist (head trailheads
+                  (sum-of-trail-scores trails-from-head))
+      
+      (do* ((seen (list) (if p2
+                             '()
+                             (cons current-point seen)))
+            (stack (list head) (nconc (next-trail-points current-point) stack))
+            (current-point head (pop stack))
+            (head-score 0 (if (= (the fixnum 9) (apply #'aref map-grid  current-point))
+                              (1+ (the fixnum head-score))
+                              head-score)))
+           ((endp stack)
+            (setf (gethash head trails-from-head) head-score))
+        (declare (special seen))))))
 
 (defun p2 (map-grid trailheads)
   (p1 map-grid trailheads t))
