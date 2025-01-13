@@ -81,12 +81,10 @@
         finally (return (values grid heads))))
 
 (defun next-trail-points (current-point &optional (allowed-difference 1))
-  (let ((next-points (list))
-       ;; (c-point (apply #'complex current-point))
-        )
+  (let ((next-points (list)))
     (declare (special map-grid seen))
     (dolist (look-dir *directions* (nreverse next-points))
-      (let* ((cand-point (mapcar #'+ current-point look-dir)) ;; do i want to use complexes or lists?
+      (let* ((cand-point (mapcar #'+ current-point look-dir))
              (candidate (handler-case (apply #'aref map-grid cand-point)
                           (error () *out-of-bounds-value*)))
              (current-height (apply #'aref map-grid current-point)))
@@ -98,6 +96,7 @@
 (defun sum-of-trail-scores (trailscores)
   (reduce #'+ (a:hash-table-values trailscores)))
 
+;;first try at iterative dfs - see end of file for more-generalized solution, need to spin to utility library
 (defun p1 (map-grid trailheads &optional (p2 nil))
   (declare (special map-grid))
   (let ((trails-from-head (make-hash-table :test 'equal)))
@@ -132,3 +131,45 @@
 
 (defun test (&rest parts)
   (multiple-value-call #'run parts (parse-input *big-test-input*)))
+
+
+(defun dfs-iter (neighbor-fn graph initial-point &key (all-possible nil))
+  "general iterative Depth-First Search on a graph.
+neighbor-fn takes 2 arguments, the graph and the starting point, needs to return a list of 'valid' neighbors of that point (for whatever that means for the given graph). all-possible disables checking of visited points, so may cause infinite looping. returns the list of travelled points. "
+  (check-type neighbor-fn function)
+  (do* ((visited-pts (list) (cons current-pt visited-pts))
+        (not-visited (list) (delete-if (lambda (itm)
+                                         (if (not all-possible)
+                                             (member itm visited-pts :test #'equal)
+                                             nil))
+                                       (funcall neighbor-fn graph current-pt)))
+        (search-stack (list initial-point) (nconc not-visited search-stack))
+        (current-pt initial-point (pop search-stack)))
+       ((endp search-stack)             ; full traversal
+        (nreverse visited-pts))))
+
+(defun d10-next-pts (grid current-point)
+  (loop for look-dir in *directions*
+        for cand-point = (mapcar #'+ current-point look-dir)
+        for cand-height = (handler-case (apply #'aref grid cand-point)
+                            (error () *out-of-bounds-value*))
+        for current-height = (apply #'aref grid current-point)
+        when (= 9 current-height)
+          return nil
+        when (and (/= cand-height *out-of-bounds-value*)
+                  (= 1 (- cand-height current-height)))
+          collect cand-point))
+
+(defun general ()
+  (multiple-value-bind (g starts)
+      (parse-input (uiop:read-file-lines "2024d10input.txt"))
+    (loop for s in starts
+          sum (count-if (lambda (pt)
+                          (= 9 (apply #'aref g pt)))
+                        (dfs-iter #'d10-next-pts g s))
+            into pt1
+          sum (count 9
+                     (dfs-iter #'d10-next-pts g s :all-possible t)
+                     :key (a:curry #'apply #'aref g))
+            into pt2
+          finally (return (values pt1 pt2)))))
