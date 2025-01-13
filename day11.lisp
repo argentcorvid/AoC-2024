@@ -45,25 +45,32 @@
 (defun p1 (stones)
   (length (the list (brute-force-recursive stones 25))))
 
+(defun do-blink (stones)
+  ;; (mapcan (lambda (stone)
+  ;;           (declare (type integer stone))
+  ;;           (cond ((zerop stone) (list 1))
+  ;;                 ((evenp (digits stone)) (split-digits stone))
+  ;;                 (t (list (* stone 2024)))))
+  ;;         stones)
+  (loop for s in stones
+        nconc (cond ((zerop s) (list 1))
+                    ((evenp (digits s)) (split-digits s))
+                    (t (list (* s 2024))))))
+
 (defun iterate (stones &optional (blinks 0))
-  (flet ((do-blink (stones)
-           (mapcan (lambda (stone)
-                              (declare (type integer stone))
-                              (cond ((zerop stone) (list 1))
-                                    ((evenp (digits stone)) (split-digits stone))
-                                    (t (list (* stone 2024)))))
-                            stones)))
-    (do* ((stones (copy-list stones) new-stones)
-          (blinks blinks (1- blinks))
-          (new-stones))
-         ((zerop blinks)
-          (length stones))
-      (setf new-stones (do-blink stones)))))
+  (do* ((stones (copy-list stones) new-stones)
+        (blinks blinks (1- blinks))
+        (new-stones))
+       ((zerop blinks)
+        (length stones))
+    (setf new-stones (do-blink stones))))
 
 (defun p2 (stones)
   ;;  (length (the list (brute-force-recursive stones 75))) ;;runs out of heap, time to iterate!
-  (iterate stones 75))
-
+  ;;  (iterate stones 75) ;this runs out of memory too!
+  ;;  (loop for stone in stones
+  ;;       sum (iterate (list stone) 75)) ; nope!
+  )
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
