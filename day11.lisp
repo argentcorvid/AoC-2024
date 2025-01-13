@@ -65,12 +65,42 @@
         (length stones))
     (setf new-stones (do-blink stones))))
 
-(defun p2 (stones)
+(defun dfs-iter (neighbor-fn graph initial-point &key (all-possible nil) (depth-limit nil))
+  "general iterative Depth-First Search on a graph.
+neighbor-fn takes 2 arguments, the graph and the starting point, needs to return a list of 'valid' neighbors of that point (for whatever that means for the given graph). 
+  all-possible disables checking of visited points, so may cause infinite looping. 
+  returns the length of the stack (+1?) "
+  (check-type neighbor-fn function)
+  (do* ((visited-pts (list) (cons current-pt visited-pts))
+        (not-visited (list) (if (not all-possible)
+                                (delete-if (lambda (itm)
+                                             (member itm visited-pts :test #'equal))
+                                           (funcall neighbor-fn graph current-pt))
+                                nil))
+        (search-stack (list initial-point) (nconc not-visited search-stack))
+        (current-pt initial-point (pop search-stack))
+        (depth 0 (1+ depth)))
+       ((or (endp search-stack)              ; full traversal
+            (when depth-limit
+              (= depth depth-limit)))
+        (nreverse visited-pts))))
+
+(defun p2 (stones &optional (limit 5))
   ;;  (length (the list (brute-force-recursive stones 75))) ;;runs out of heap, time to iterate!
   ;;  (iterate stones 75) ;this runs out of memory too!
   ;;  (loop for stone in stones
   ;;       sum (iterate (list stone) 75)) ; nope!
-  )
+  (loop for stone in stones
+        sum (dfs-iter (lambda (s1 s)
+                        (declare (ignore s1))
+                        (cond ((zerop s) (list 1))
+                              ((evenp (digits s)) (split-digits s))
+                              (t (list (* s 2024)))))
+                      stone
+                      stone
+                      :all-possible t
+                      :depth-limit limit)))
+
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
