@@ -2,8 +2,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(:alexandria :str))
-  #+SBCL (add-package-local-nickname 'a 'alexandria)
-  #+ECL  (ext:add-package-local-nickname 'a 'alexandria))
+  (add-package-local-nickname 'a 'alexandria-2))
 
 (defparameter *day-number* x)
 (defparameter *input-name-template* "2024d~dinput.txt")
