@@ -34,28 +34,23 @@
   (declare (type fixnum blinks))
   (when (zerop blinks)
     (return-from brute-force-recursive stones))
-  (let ((new-stones (mapcan (lambda (stone)
-                              (declare (type integer stone))
-                              (cond ((zerop stone) (list 1))
-                                    ((evenp (digits stone)) (split-digits stone))
-                                    (t (list (* stone 2024)))))
+  (let ((new-stones (mapcan #'do-blink
                             stones)))
     (brute-force-recursive new-stones (1- blinks)))) 
 
 (defun p1 (stones)
   (length (the list (brute-force-recursive stones 25))))
 
-(defun do-blink (stones)
+(defun do-blink (s)
   ;; (mapcan (lambda (stone)
   ;;           (declare (type integer stone))
   ;;           (cond ((zerop stone) (list 1))
   ;;                 ((evenp (digits stone)) (split-digits stone))
   ;;                 (t (list (* stone 2024)))))
   ;;         stones)
-  (loop for s in stones
-        nconc (cond ((zerop s) (list 1))
-                    ((evenp (digits s)) (split-digits s))
-                    (t (list (* s 2024))))))
+  (cond ((zerop s) (list 1))
+        ((evenp (digits s)) (split-digits s))
+        (t (list (* s 2024)))))
 
 (defun iterate (stones &optional (blinks 0))
   (do* ((stones (copy-list stones) new-stones)
@@ -63,43 +58,35 @@
         (new-stones))
        ((zerop blinks)
         (length stones))
-    (setf new-stones (do-blink stones))))
+    (setf new-stones (mapcan #'do-blink stones))))
 
-(defun dfs-iter (neighbor-fn graph initial-point &key (all-possible nil) (depth-limit nil))
-  "general iterative Depth-First Search on a graph.
-neighbor-fn takes 2 arguments, the graph and the starting point, needs to return a list of 'valid' neighbors of that point (for whatever that means for the given graph). 
-  all-possible disables checking of visited points, so may cause infinite looping. 
-  returns the length of the stack (+1?) "
-  (check-type neighbor-fn function)
-  (do* ((visited-pts (list) (cons current-pt visited-pts))
-        (not-visited (list) (if (not all-possible)
-                                (delete-if (lambda (itm)
-                                             (member itm visited-pts :test #'equal))
-                                           (funcall neighbor-fn graph current-pt))
-                                nil))
-        (search-stack (list initial-point) (nconc not-visited search-stack))
-        (current-pt initial-point (pop search-stack))
-        (depth 0 (1+ depth)))
-       ((or (endp search-stack)              ; full traversal
-            (when depth-limit
-              (= depth depth-limit)))
-        (nreverse visited-pts))))
 
-(defun p2 (stones &optional (limit 5))
+(defun p2 (stones)
   ;;  (length (the list (brute-force-recursive stones 75))) ;;runs out of heap, time to iterate!
   ;;  (iterate stones 75) ;this runs out of memory too!
   ;;  (loop for stone in stones
   ;;       sum (iterate (list stone) 75)) ; nope!
-  (loop for stone in stones
-        sum (dfs-iter (lambda (s1 s)
-                        (declare (ignore s1))
-                        (cond ((zerop s) (list 1))
-                              ((evenp (digits s)) (split-digits s))
-                              (t (list (* s 2024)))))
-                      stone
-                      stone
-                      :all-possible t
-                      :depth-limit limit)))
+  (let ((memo (make-hash-table :test #'equal)))
+    (macrolet ((setmemo (k v)
+                 `(setf (gethash ,k memo) ,v)))
+      (labels ((rec-count (stone steps)
+                 (a:when-let ((stored (gethash (list stone steps) memo)))
+                   (return-from rec-count stored))
+                 (cond ((zerop steps)
+                        1)
+                       ((zerop stone)
+                        (setmemo (list stone steps)
+                                 (rec-count 1 (1- steps))))
+                       ((evenp (digits stone))
+                        (destructuring-bind (left right)
+                            (split-digits stone)
+                          (setmemo (list stone steps)
+                                   (+ (rec-count left (1- steps))
+                                      (rec-count right (1- steps))))))
+                       (t (setmemo (list stone steps)
+                                   (rec-count (* 2024 stone) (1- steps)))))))
+        (loop for s in stones
+              sum (rec-count s 75))))))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
