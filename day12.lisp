@@ -72,11 +72,12 @@ MMMISSJEEE"
           for col = (mod index (second garden-dims))
           for row = (floor (- index col) (first garden-dims))
           for sneighbors = (same-neighbors-count garden row col)
-          do (incf (gethash plot plot-perimeters 0) (- 4 sneighbors))
-             (incf (gethash plot plot-areas 0)))
-    (loop for area being each hash-value of plot-areas
-          for perim being each hash-value of plot-perimeters
-          summing (* area perim))))
+          do (incf (gethash plot plot-perimeters 0) (- 4 sneighbors))  ;no, need to multiply perm and area, then add
+             (incf (gethash plot plot-areas 0))) ;
+    (break) ;
+    (loop for area being each hash-value of plot-areas using (hash-key plot-type)
+          for perim = (gethash plot-type plot-perimeters)
+          summing (* area perim)))) ;this is wrong
  
 
 (defun p2 (garden)
@@ -98,10 +99,8 @@ MMMISSJEEE"
   (run parts (parse-input (str:split-omit-nulls #\newline *small-test-input*))))
 
 (defun test-all (&rest parts)
-  (princ (with-output-to-string (*standard-output*)
-         (dolist (input (list *small-test-input*
-                              *med-test-input*
-                              *test-input*))
-           (run parts (parse-input (str:split-omit-nulls #\newline input))))))
-(terpri))
+  (dolist (input (list *small-test-input*
+                       *med-test-input*
+                       *test-input*))
+    (run parts (parse-input (str:split-omit-nulls #\newline input)))))
 
