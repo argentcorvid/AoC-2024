@@ -47,37 +47,47 @@ MMMISSJEEE"
 
 (defparameter *directions* '((0 1) (1 0) (0 -1) (-1 0)))
 
-(defun same-neighbors-count (grid row col)
-  (flet ((oob? (itm)
-           (let ((maxs (array-dimensions grid)))
-             (or (some #'minusp itm)
-                 (some #'>= itm maxs)))))
-    (let* ((point (list row col))
-           (candidates (remove-if #'oob? (mapcar (lambda (d)
-                                                   (mapcar #'+ point d))
-                                                 *directions*))))
-      (count-if (a:curry #'char-equal (aref grid row col))
-                candidates
-                :key (a:curry #'apply #'aref grid)))))
+(defun oob? (grid itm)
+  (let ((maxs (array-dimensions grid)))
+    (or (some #'minusp itm)
+        (some #'>= itm maxs))))
+
+(defun same-neighbors (grid row col)
+  (let* ((point (list row col))
+         (candidates (remove-if (a:curry #'oob? grid) (mapcar (lambda (d)
+                                                  (mapcar #'+ point d))
+                                                *directions*))))
+    (remove-if (a:curry #'char-not-equal (aref grid row col))
+              candidates
+              :key (a:curry #'apply #'aref grid))))
+
+(let ((plot-seen (make-array 100 :adjustable t :fill-pointer 0)))
+  (defun find-region-from-point (grid row col)
+    "breadth-first floodfill to fimd adjacent plots"
+    (do* ((plot-type (aref grid row col))
+          (current-point (list row col) (pop search-queue))
+          (search-queue (same-neighbors grid row col) (nconc search-queue (apply #'same-neighbors grid current-point))))
+      ()
+      (vector-push-extend current-point plot-seen))))
 
 (defun p1 (garden)
   (let* ((table-size (+ 10 (* 2 26)))   ; A-Z,a-z,0-9
          (garden-size (array-total-size garden))
          (garden-dims (array-dimensions garden))
-         (plot-areas (make-hash-table :size table-size))
-         (plot-perimeters (make-hash-table :size table-size))
+         
+         (plot-perims (make-hash-table :size table-size))
          (linear-garden (make-array garden-size :displaced-to garden :element-type 'character)))
     (loop for plot across linear-garden
           for index from 0
           for col = (mod index (second garden-dims))
           for row = (floor (- index col) (first garden-dims))
-          for sneighbors = (same-neighbors-count garden row col)
-          do (incf (gethash plot plot-perimeters 0) (- 4 sneighbors))  ;no, need to multiply perm and area, then add
-             (incf (gethash plot plot-areas 0))) ;
-    (break) ;
-    (loop for area being each hash-value of plot-areas using (hash-key plot-type)
-          for perim = (gethash plot-type plot-perimeters)
-          summing (* area perim)))) ;this is wrong
+          for sneighbors = (length (same-neighbors garden row col)) 
+          #|  do (incf (gethash plot plot-perimeters 0) (- 4 sneighbors))  ;no, need to multiply perm and area, then add
+                           (incf (gethash plot plot-areas 0))|#
+          do ?) 
+    (break) 
+    (loop for p being the hash-values of plot-perims using (hash-key type )
+          summing (* p (count type linear-garden)))))
  
 
 (defun p2 (garden)
