@@ -53,22 +53,32 @@ MMMISSJEEE"
         (some #'>= itm maxs))))
 
 (defun same-neighbors (grid row col)
-  (let* ((point (list row col))
-         (candidates (remove-if (a:curry #'oob? grid) (mapcar (lambda (d)
-                                                  (mapcar #'+ point d))
-                                                *directions*))))
-    (remove-if (a:curry #'char-not-equal (aref grid row col))
-              candidates
-              :key (a:curry #'apply #'aref grid))))
+  (flet ((keyfun (point)
+           (handler-case (apply #'aref grid point)
+             (error () #\$))))
+    (let* ((point (list row col))
+           (candidates (remove-if (a:curry #'oob? grid) (mapcar (lambda (d)
+                                                                  (mapcar #'+ point d))
+                                                                *directions*))))
+      (remove-if (a:curry #'char-not-equal (aref grid row col))
+                 candidates
+                 :key #'keyfun))))
 
-(let ((plot-seen (make-array 100 :adjustable t :fill-pointer 0)))
-  (defun find-region-from-point (grid row col)
-    "breadth-first floodfill to fimd adjacent plots"
-    (do* ((plot-type (aref grid row col))
-          (current-point (list row col) (pop search-queue))
-          (search-queue (same-neighbors grid row col) (nconc search-queue (apply #'same-neighbors grid current-point))))
-      ()
-      (vector-push-extend current-point plot-seen))))
+(defun find-region-from-point (grid row col)
+  "breadth-first floodfill to fimd adjacent plots"
+  (do* ((visited (list) (cons current-point visited))
+        (current-point (list row col) (pop search-queue))
+        (neighbors (same-neighbors grid row col)
+                   (apply #'same-neighbors grid current-point))
+        (not-visited neighbors
+                     (remove-if (a:rcurry #'member visited :key #'car :test #'equal)
+                                neighbors))
+        (search-queue not-visited (nconc search-queue not-visited)))
+       ((endp search-queue)
+        (pushnew (cons current-point (- 4 (length not-visited))) visited :key #'car :test #'equal)
+        (nreverse visited))
+    (let* ((perimeter (- 4 (length neighbors))))
+      (setf current-point (cons current-point perimeter)))))
 
 (defun p1 (garden)
   (let* ((table-size (+ 10 (* 2 26)))   ; A-Z,a-z,0-9
