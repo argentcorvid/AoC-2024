@@ -83,23 +83,25 @@ MMMISSJEEE"
     ))
 
 (defun p1 (garden)
-  (let* ((table-size (+ 10 (* 2 26)))   ; A-Z,a-z,0-9
-         (garden-size (array-total-size garden))
+  (let* ((garden-size (array-total-size garden))
          (garden-dims (array-dimensions garden))
-         
-         (plot-perims (make-hash-table :size table-size))
-         (linear-garden (make-array garden-size :displaced-to garden :element-type 'character)))
-    (loop for plot across linear-garden
-          for index from 0
-          for col = (mod index (second garden-dims))
-          for row = (floor (- index col) (first garden-dims))
-          for sneighbors = (length (same-neighbors garden row col)) 
-          #|  do (incf (gethash plot plot-perimeters 0) (- 4 sneighbors))  ;no, need to multiply perm and area, then add
-                           (incf (gethash plot plot-areas 0))|#
-          do ?) 
-    (break) 
-    (loop for p being the hash-values of plot-perims using (hash-key type )
-          summing (* p (count type linear-garden)))))
+         (linear-garden (make-array garden-size :displaced-to garden
+                                    :element-type 'character)))
+    (loop with visited-marker = #\$
+          with (rows cols) = garden-dims
+          for prev-start-idx = 0 then next-start-idx
+          for next-start-idx = (position visited-marker linear-garden
+                                         :test-not #'char-equal
+                                         :start prev-start-idx)
+          until (null next-start-idx)
+          for col = (mod next-start-idx cols)
+          for row = (floor (- next-start-idx col) cols)
+          for region = (find-region-from-point garden row col)
+          sum (loop for (pt . perim) in region
+                   count pt into area
+                   sum perim into perimeter
+                   do (setf (apply #'aref garden pt) visited-marker)
+                   finally (return (* area perimeter))))))
  
 
 (defun p2 (garden)
