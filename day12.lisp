@@ -83,7 +83,8 @@ MMMISSJEEE"
     ))
 
 (defun p1 (garden)
-  (let* ((garden-size (array-total-size garden))
+  (let* ((garden (a:copy-array garden))
+         (garden-size (array-total-size garden))
          (garden-dims (array-dimensions garden))
          (linear-garden (make-array garden-size :displaced-to garden
                                     :element-type 'character)))
