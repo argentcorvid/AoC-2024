@@ -65,20 +65,22 @@ MMMISSJEEE"
                  :key #'keyfun))))
 
 (defun find-region-from-point (grid row col)
-  "breadth-first floodfill to fimd adjacent plots"
+  " floodfill to fimd adjacent plots"
   (do* ((visited (list) (cons current-point visited))
         (current-point (list row col) (pop search-queue))
         (neighbors (same-neighbors grid row col)
                    (apply #'same-neighbors grid current-point))
+        (perimeter (- 4 (length neighbors))
+                   (- 4 (length neighbors)))
         (not-visited neighbors
-                     (remove-if (a:rcurry #'member visited :key #'car :test #'equal)
-                                neighbors))
-        (search-queue not-visited (nconc search-queue not-visited)))
+                     (set-difference neighbors visited :test (lambda (n v) (equal n (car v)))))
+        (search-queue not-visited (union not-visited search-queue :test #'equal)))
        ((endp search-queue)
-        (pushnew (cons current-point (- 4 (length not-visited))) visited :key #'car :test #'equal)
+        (pushnew (cons current-point perimeter) visited :key #'car :test #'equal)
         (nreverse visited))
-    (let* ((perimeter (- 4 (length neighbors))))
-      (setf current-point (cons current-point perimeter)))))
+    (setf current-point (cons current-point perimeter))
+    ;;(break)
+    ))
 
 (defun p1 (garden)
   (let* ((table-size (+ 10 (* 2 26)))   ; A-Z,a-z,0-9
