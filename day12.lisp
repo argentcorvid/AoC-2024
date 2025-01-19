@@ -14,16 +14,23 @@
   "AAAA
 BBCD
 BBCC
-EEEC"
-  "part 1: 5 regions, total price 140")
+EEEC
+"
+  "part 1: 5 regions, total price 140
+part 2: 5 regions:
+  A,B,D,E: 4 sides
+  C: 8 sides
+total price: 80")
 
 (defparameter *med-test-input*
   "OOOOO
 OXOXO
 OOOOO
 OXOXO
-OOOOO"
-  "part 1: 5 regions, total price 772")
+OOOOO
+"
+  "part 1: 5 regions, total price 772
+part 2: total price 436")
 
 (defparameter *test-input*
   "RRRRIICCFF
@@ -35,8 +42,31 @@ VVIVCCJJEE
 VVIIICJJEE
 MIIIIIJJEE
 MIIISIJEEE
-MMMISSJEEE"
-  "part 1: 11 regions, total price 1930")
+MMMISSJEEE
+"
+  "part 1: 11 regions, total price 1930
+part 2: total price 1206")
+
+(defparameter *pt2-test1*
+  "EEEEE
+EXXXX
+EEEEE
+EXXXX
+EEEEE
+"
+  "part 2: total price 236
+  E region: Area 17, Sides 12")
+
+(defparameter *pt-test2*
+  "AAAAAA
+AAABBA
+AAABBA
+ABBAAA
+ABBAAA
+AAAAAA
+"
+  "part 2: total price 368
+B regions are NOT connected")
 
 (defun parse-input (lines)
   (when (typep lines 'string)
