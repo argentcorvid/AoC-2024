@@ -110,7 +110,7 @@ B regions are NOT connected")
         for look-dir in *corner-looks*
         ;;for look-points = (mapcar (a:curry #'+ cpoint) look-dir)
         for (e s se) = (mapcar (lambda (pt)
-                                 (handler-case (complex-aref grid pt point)
+                                 (handler-case (complex-aref grid pt cpoint)
                                    (error () #\$)))
                                look-dir)
         counting (or (and (char= e s plot-type)
