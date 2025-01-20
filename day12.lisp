@@ -57,7 +57,7 @@ EEEEE
   "part 2: total price 236
   E region: Area 17, Sides 12")
 
-(defparameter *pt-test2*
+(defparameter *pt2-test2*
   "AAAAAA
 AAABBA
 AAABBA
@@ -168,7 +168,12 @@ B regions are NOT connected")
  
 
 (defun p2 (garden)
-  )
+  (loop with garden = (a:copy-array garden)
+        for region in (collect-regions garden)
+        sum (loop for (pt nil s) in region
+                  count pt into area
+                  sum s into sides
+                  finally (return (* area sides)))))
 
 (defun run (parts-list garden)
   (dolist (part (a:ensure-list parts-list))
