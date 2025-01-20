@@ -139,12 +139,11 @@ B regions are NOT connected")
     ;;(break)
     ))
 
-(defun p1 (garden)
-  (let* ((garden (a:copy-array garden))
-         (garden-size (array-total-size garden))
+(defun collect-regions (garden)
+  (let* ((garden-size (array-total-size garden))
          (garden-dims (array-dimensions garden))
          (linear-garden (make-array garden-size :displaced-to garden
-                                    :element-type 'character)))
+                                                :element-type 'character)))
     (loop with visited-marker = #\$
           with (nil cols) = garden-dims
           for prev-start-idx = 0 then next-start-idx
@@ -155,11 +154,17 @@ B regions are NOT connected")
           for col = (mod next-start-idx cols)
           for row = (floor (- next-start-idx col) cols)
           for region = (find-region-from-point garden row col)
+          collecting region
+          do (loop for (pt . nil) in region
+                   do (setf (apply #'aref garden pt) visited-marker)))))
+
+(defun p1 (garden)
+  (let* ((garden (a:copy-array garden)))
+    (loop for region in (collect-regions garden)
           sum (loop for (pt perim) in region
-                   count pt into area
-                   sum perim into perimeter
-                   do (setf (apply #'aref garden pt) visited-marker)
-                   finally (return (* area perimeter))))))
+                    count pt into area
+                    sum perim into perimeter
+                    finally (return (* area perimeter))))))
  
 
 (defun p2 (garden)
