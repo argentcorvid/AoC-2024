@@ -90,25 +90,52 @@ B regions are NOT connected")
            (candidates (remove-if (a:curry #'oob? grid) (mapcar (lambda (d)
                                                                   (mapcar #'+ point d))
                                                                 *directions*))))
-      (remove-if (a:curry #'char-not-equal (aref grid row col))
+      (remove-if (a:curry #'char/= (aref grid row col))
                  candidates
                  :key #'keyfun))))
+
+(defun complex-aref (array complex-point &optional (ref-point #c(0 0)))
+  (let ((point (+ complex-point ref-point)))
+    (aref array (realpart point) (imagpart point))))
+
+(defparameter *corner-looks*
+  (loop for look-dir = '(#c (0 1) #c (1 0) #c (1 1))
+          then (mapcar (a:curry #'* #c (0 -1)) look-dir)
+        repeat 4
+        collect look-dir))
+
+(defun point-corners (grid point)
+  (loop with cpoint = (apply #'complex point)
+        with plot-type = (apply #'aref grid point)
+        for look-dir in *corner-looks*
+        ;;for look-points = (mapcar (a:curry #'+ cpoint) look-dir)
+        for (e s se) = (mapcar (lambda (pt)
+                                 (handler-case (complex-aref grid pt point)
+                                   (error () #\$)))
+                               look-dir)
+        counting (or (and (char= e s plot-type)
+                          (char/= se plot-type))
+                     (and (char/= plot-type s)
+                          (char/= plot-type e)))))
 
 (defun find-region-from-point (grid row col)
   " floodfill to fimd adjacent plots"
   (do* ((visited (list) (cons current-point visited))
         (current-point (list row col) (pop search-queue))
+        
         (neighbors (same-neighbors grid row col)
                    (apply #'same-neighbors grid current-point))
         (perimeter (- 4 (length neighbors))
                    (- 4 (length neighbors)))
+        (corners (point-corners grid current-point)
+                (point-corners grid current-point))
         (not-visited neighbors
                      (set-difference neighbors visited :test (lambda (n v) (equal n (car v)))))
         (search-queue not-visited (union not-visited search-queue :test #'equal)))
        ((endp search-queue)
-        (pushnew (cons current-point perimeter) visited :key #'car :test #'equal)
+        (pushnew (list current-point perimeter corners) visited :key #'car :test #'equal)
         (nreverse visited))
-    (setf current-point (cons current-point perimeter))
+    (setf current-point (list current-point perimeter corners))
     ;;(break)
     ))
 
@@ -119,16 +146,16 @@ B regions are NOT connected")
          (linear-garden (make-array garden-size :displaced-to garden
                                     :element-type 'character)))
     (loop with visited-marker = #\$
-          with (rows cols) = garden-dims
+          with (nil cols) = garden-dims
           for prev-start-idx = 0 then next-start-idx
           for next-start-idx = (position visited-marker linear-garden
-                                         :test-not #'char-equal
+                                         :test-not #'char=
                                          :start prev-start-idx)
           until (null next-start-idx)
           for col = (mod next-start-idx cols)
           for row = (floor (- next-start-idx col) cols)
           for region = (find-region-from-point garden row col)
-          sum (loop for (pt . perim) in region
+          sum (loop for (pt perim) in region
                    count pt into area
                    sum perim into perimeter
                    do (setf (apply #'aref garden pt) visited-marker)
