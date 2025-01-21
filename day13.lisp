@@ -85,11 +85,19 @@ Prize: X=18641, Y=10279
                      (integerp b-presses)
                      (< b-presses 100)
                      (< a-presses 100))
-            (incf res (+ (* 3 a-presses) b-presses)))))))
-  ) 
+            (incf res (+ (* 3 a-presses) b-presses)))))))) 
 
-(defun p2 ()
-  )
+(defun p2 (machine-info-lists)
+  (let ((res 0)
+        (prize-correction 10000000000000))
+    (dolist (info machine-info-lists res)
+      (destructuring-bind ((ax bx px) (ay by py))
+          info
+        (let* ((b-presses (b-presses ax ay bx by (+ px prize-correction) (+ py prize-correction)))
+               (a-presses (a-presses ax bx (+ px prize-correction) b-presses)))
+          (when (and (integerp a-presses)
+                     (integerp b-presses))
+            (incf res (+ (* 3 a-presses) b-presses))))))))
 
 (defun run (parts-list data)
   (dolist (part (a:ensure-list parts-list))
