@@ -68,6 +68,29 @@ Prize: X=18641, Y=10279
          (bot (- (* a-x b-y) (* b-x a-y))))
     (/ top bot)))
 
+(defun det (seq1 seq2)
+  (- (* (elt seq1 0) (elt seq2 1))
+     (* (elt seq1 1) (elt seq2 0))))
+
+(defun cramer (machine-info-list)
+  (destructuring-bind (dx dy prize-loc) machine-info-list
+    (let ((a-presses (/ (det prize-loc dy) (det dx dy)))
+          (b-presses (/ (det dx prize-loc) (det dx dy))))
+      (values a-presses b-presses))))
+
+(defun p1-cramer (machine-info-lists)
+  (let ((res 0)
+        (machine-info-lists (mapcar (lambda (m) (apply #'mapcar #'list m) machine-info-lists)))) ; transpose the lists for expected input
+                                                                                                 ; move this up a level if you want to do time comparison
+    (dolist (info machine-info-lists res)
+      (multiple-value-bind (a b)
+          (cramer info)
+        (when (and (integerp a)
+                   (integerp b)
+                   (< 0 a 100)
+                   (< 0 b 100))
+          (incf res (+ (* 3 a) b)))))))
+
 (defun b-presses-from-list (machine-info-list)
   (destructuring-bind ((ax bx px) (ay by py))
       machine-info-list
