@@ -32,7 +32,7 @@ v -> velocity")
         (push (list (list px py) (list vx vy)) bots))))
 
 (defun move-bot (bot seconds &optional (max-list '(5000 5000)))
-  (let* ((seconds (mod seconds (apply #'* max-list)))
+  (let* (;(seconds (mod seconds (apply #'* max-list)))
          (new-pos (mapcar (lambda (pc vc mc)
                             (mod (+ pc (* vc seconds))
                                  mc))
@@ -68,16 +68,30 @@ v -> velocity")
         (when quad
           (incf (nth quad quadrant-counts))))))) 
 
+(defun tree-pic? (bots-state centers)
+  (let* ((bot-count (length bots-state))
+         (most-bots (1+ (ceiling bot-count 2))))
+    ))
+
 (defun p2 (bots bounds)
   ;; "very rarely, (!)most(!) of the robots should arrange themselves into a picture of a Christmas tree"
   ;;find a picture of a christmas tree
   ;;christmas trees are symmetrical around the x-center
+  ;; - OR could be mirrored on y-center
   ;; - same number of points in left and right halves (even numbers)
   ;; - for each y, points on the left would be mirrored on the x-center
   ;; -- for every bot at x - x-center, there should be a bot at x + x-center (? shift center to zero, bots at -x and +x)
   ;; -- -- don't think if you set x-bound to x-center each position will have (at least) 2 bots (don't think it will mirror)?
   ;; how many is "most"?
-  )
+  (let ((bot-count (length bots))
+        (centers (mapcar (a:rcurry #'floor 2) bounds)))
+    (loop for steps from 0 below (expt 10 9)
+          for bots-step = bots then (mapcar (a:rcurry #'move-bot 1 bounds)
+                                            bots-step)
+          when (tree-pic? bots-step centers)
+            do (print-bots bots-step)
+            and return steps
+          finally (return steps ))))
 
 (defun run (parts-list data bounds)
   (dolist (part (a:ensure-list parts-list))
