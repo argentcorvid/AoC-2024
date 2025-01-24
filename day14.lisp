@@ -70,31 +70,46 @@ v -> velocity")
 (defun tree-pic? (bots-state centers)
   (let* ((bot-count (length bots-state))
          (most-bots (floor bot-count 4))) ;when reached, aound half of the bots are mirrored
-    (destructuring-bind (x-mirror y-mirror) centers
-      (multiple-value-bind (left-top left-bot right-top right-bot)
-          (loop for b in bots
-                for q = (quadrant-of bot centers)
-                when (eql q 0)       ; not odd/even or =, could be nil
-                  collect b into lt
-                when (eql q 2)   
-                  collect b into lb
-                when (eql q 1)
-                  collect b into rt
-                when (eql q 3)
-                  collect b into rb
-                finally (return (values lt lb rt rb)))
-        (loop for ltb in left-top 
-              counting (find-mirrored ltb right-top x-mirror) into mirrored-horizontally
-              counting (find-mirrored ltb left-bottom y-mirror) into mirrored-vertically
-              when (or (>= most-bots mirrored-vertically)
-                       (>= most-bots mirrored-horizontally))
-                return t)))))
+    (multiple-value-bind (left-top left-bot right-top right-bot)
+        (loop for b in bots
+              for q = (quadrant-of bot centers)
+              when (eql q 0)       ; not odd/even or =, could be nil
+                collect b into lt
+              when (eql q 2)   
+                collect b into lb
+              when (eql q 1)
+                collect b into rt
+              when (eql q 3)
+                collect b into rb
+              finally (return (values lt lb rt rb)))
+      (loop for ltb in left-top 
+            counting (find-mirrored ltb right-top centers :h) into mirrored-horizontally
+            counting (find-mirrored ltb left-bottom centers :v) into mirrored-vertically
+            when (or (>= mirrored-vertically most-bots)
+                     (>= mirrored-horizontally most-bots))
+              return t))))
 
-(defun find-mirrored (bot bot-list mirror)
+(defun find-mirrored (bot bot-list mirrors mirror-dir)
   (destructuring-bind ((bot-x bot-y) vel)
-      bot
-    (declare (ignore vel))
-    ()))
+        bot
+      (declare (ignore vel))
+    (let (static-axis
+          look-axis
+          mirror-at
+          mirrored-bot)
+      (ccase mirror-dir
+        (:h (setf static-axis bot-y
+                 look-axis bot-x
+                 mirror-at (first mirrors)))
+        (:v (setf static-axis bot-x
+                 look-axis bot-y
+                 mirror-at (second mirrors))))
+      (let* ((dist-to-mirror (- mirror-at look-axis))
+             (mirrored-pos (+ mirror-at dist-to-mirror))
+             (mirrored-bot (if (eql mirror-dir :h)
+                               (list mirrored-pos static-axis)
+                               (list static-axis mirrored-pos))))
+        (find mirrored-bot bot-list :test #'equal)))))
 
 (defun p2 (bots bounds)
   ;; "very rarely, (!)most(!) of the robots should arrange themselves into a picture of a Christmas tree"
