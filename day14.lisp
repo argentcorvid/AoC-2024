@@ -24,12 +24,18 @@ p=9,5 v=-3,-3
   "p -> position
 v -> velocity")
 
+(defparameter test-tree
+  (mapcar (lambda (pt)
+           (list pt '(0 0)))
+          '((4 0) (6 0) (4 3) (6 3) (4 4) (6 4) (3 4) (7 4) (2 4) (8 4) (1 4) (9 4) (0 4) (10 4)
+            (1 5) (2 6) (3 7) (4 8) (5 9) (6 8) (7 7) (8 6) (9 5))))
+
 (defun parse-input (lines)
   (let ((scanner (ppcre:create-scanner "(\\d+),(\\d+) v=(-?\\d+),(-?\\d+)"))
         (bots (list)))
     (ppcre:do-register-groups ((#'parse-integer px py vx vy))
         (scanner lines (nreverse bots))
-        (push (list (list px py) (list vx vy)) bots))))
+      (push (list (list px py) (list vx vy)) bots))))
 
 (defun move-bot (bot seconds &optional (max-list '(5000 5000)))
   (let* (;(seconds (mod seconds (apply #'* max-list)))
@@ -67,12 +73,12 @@ v -> velocity")
         (when quad
           (incf (nth quad quadrant-counts))))))) 
 
-(defun tree-pic? (bots-state centers)
-  (let* ((bot-count (length bots-state))
+(defun tree-pic? (bots centers)
+  (let* ((bot-count (length bots))
          (most-bots (floor bot-count 4))) ;when reached, aound half of the bots are mirrored
     (multiple-value-bind (left-top left-bot right-top right-bot)
         (loop for b in bots
-              for q = (quadrant-of bot centers)
+              for q = (quadrant-of b centers)
               when (eql q 0)       ; not odd/even or =, could be nil
                 collect b into lt
               when (eql q 2)   
@@ -82,9 +88,10 @@ v -> velocity")
               when (eql q 3)
                 collect b into rb
               finally (return (values lt lb rt rb)))
+      (declare (ignorable right-bot))
       (loop for ltb in left-top 
             counting (find-mirrored ltb right-top centers :h) into mirrored-horizontally
-            counting (find-mirrored ltb left-bottom centers :v) into mirrored-vertically
+            counting (find-mirrored ltb left-bot centers :v) into mirrored-vertically
             when (or (>= mirrored-vertically most-bots)
                      (>= mirrored-horizontally most-bots))
               return t))))
@@ -111,6 +118,15 @@ v -> velocity")
                                (list static-axis mirrored-pos))))
         (find mirrored-bot bot-list :test #'equal)))))
 
+(defun print-bots (bots &optional (bounds '(101 103)) (stream *standard-output*))
+  (let* ((array (make-array (reverse bounds) :element-type 'character :initial-element #\.))
+         (window (make-array (first bounds) :element-type 'character :displaced-to array)))
+    (dolist (bot bots)
+      (setf (apply #'aref array (reverse (first bot))) #\*))
+    (dotimes (line-offset (second bounds))
+      (format stream "~&~a~%" window)
+      (setf window (make-array (first bounds) :element-type 'character :displaced-to array :displaced-index-offset (* line-offset (first bounds)))))))
+
 (defun p2 (bots bounds)
   ;; "very rarely, (!)most(!) of the robots should arrange themselves into a picture of a Christmas tree"
   ;;find a picture of a christmas tree
@@ -121,11 +137,14 @@ v -> velocity")
   ;; -- for every bot at x - x-center, there should be a bot at x + x-center (? shift center to zero, bots at -x and +x)
   ;; -- -- don't think if you set x-bound to x-center each position will have (at least) 2 bots (don't think it will mirror)?
   ;; how many is "most"?
+  ;; god, i hope the picture is centered!
   (let ((bot-count (length bots))
         (centers (mapcar (a:rcurry #'floor 2) bounds)))
     (loop for steps from 0 below (expt 10 9)
           for bots-step = bots then (mapcar (a:rcurry #'move-bot 1 bounds)
                                             bots-step)
+          when (= (mod steps (expt 10 4)) 0)
+            do (princ #\.)
           when (tree-pic? bots-step centers)
             do (print-bots bots-step)
             and return steps
