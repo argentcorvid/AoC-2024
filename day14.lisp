@@ -62,16 +62,39 @@ v -> velocity")
                            bots))
         (centers (mapcar (a:rcurry #'floor 2) bounds))
         (quadrant-counts (make-list 4 :initial-element 0)))
-    (dolist (bot new-posns
-                 (apply #'* quadrant-counts))
+    (dolist (bot new-posns quadrant-counts)
       (let ((quad (quadrant-of bot centers)))
         (when quad
           (incf (nth quad quadrant-counts))))))) 
 
 (defun tree-pic? (bots-state centers)
   (let* ((bot-count (length bots-state))
-         (most-bots (1+ (ceiling bot-count 2))))
-    ))
+         (most-bots (floor bot-count 4))) ;when reached, aound half of the bots are mirrored
+    (destructuring-bind (x-mirror y-mirror) centers
+      (multiple-value-bind (left-top left-bot right-top right-bot)
+          (loop for b in bots
+                for q = (quadrant-of bot centers)
+                when (eql q 0)       ; not odd/even or =, could be nil
+                  collect b into lt
+                when (eql q 2)   
+                  collect b into lb
+                when (eql q 1)
+                  collect b into rt
+                when (eql q 3)
+                  collect b into rb
+                finally (return (values lt lb rt rb)))
+        (loop for ltb in left-top 
+              counting (find-mirrored ltb right-top x-mirror) into mirrored-horizontally
+              counting (find-mirrored ltb left-bottom y-mirror) into mirrored-vertically
+              when (or (>= most-bots mirrored-vertically)
+                       (>= most-bots mirrored-horizontally))
+                return t)))))
+
+(defun find-mirrored (bot bot-list mirror)
+  (destructuring-bind ((bot-x bot-y) vel)
+      bot
+    (declare (ignore vel))
+    ()))
 
 (defun p2 (bots bounds)
   ;; "very rarely, (!)most(!) of the robots should arrange themselves into a picture of a Christmas tree"
@@ -96,7 +119,7 @@ v -> velocity")
 (defun run (parts-list data bounds)
   (dolist (part (a:ensure-list parts-list))
     (ccase part
-      (1 (format t "~&Part 1: ~a" (p1 data 100 bounds)))
+      (1 (format t "~&Part 1: ~a" (apply #'* (p1 data 100 bounds))))
       (2 (format t "~&Part 2: ~a" (p2 data bounds))))))
 
 (defun main (&rest parts)
