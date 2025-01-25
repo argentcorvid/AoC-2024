@@ -28,7 +28,8 @@ v -> velocity")
   (mapcar (lambda (pt)
            (list pt '(0 0)))
           '((4 0) (6 0) (4 3) (6 3) (4 4) (6 4) (3 4) (7 4) (2 4) (8 4) (1 4) (9 4) (0 4) (10 4)
-            (1 5) (2 6) (3 7) (4 8) (5 9) (6 8) (7 7) (8 6) (9 5))))
+            (1 5) (2 6) (3 7) (4 8) (5 9) (6 8) (7 7) (8 6) (9 5)))
+  "bounds 11,11")
 
 (defun parse-input (lines)
   (let ((scanner (ppcre:create-scanner "(\\d+),(\\d+) v=(-?\\d+),(-?\\d+)"))
@@ -102,8 +103,7 @@ v -> velocity")
       (declare (ignore vel))
     (let (static-axis
           look-axis
-          mirror-at
-          mirrored-bot)
+          mirror-at)
       (ccase mirror-dir
         (:h (setf static-axis bot-y
                  look-axis bot-x
@@ -116,7 +116,8 @@ v -> velocity")
              (mirrored-bot (if (eql mirror-dir :h)
                                (list mirrored-pos static-axis)
                                (list static-axis mirrored-pos))))
-        (find mirrored-bot bot-list :test #'equal)))))
+        (find mirrored-bot bot-list :test #'equal
+              :key #'car)))))
 
 (defun print-bots (bots &optional (bounds '(101 103)) (stream *standard-output*))
   (let* ((array (make-array (reverse bounds) :element-type 'character :initial-element #\.))
@@ -140,13 +141,11 @@ v -> velocity")
   ;; god, i hope the picture is centered!
   (let ((bot-count (length bots))
         (centers (mapcar (a:rcurry #'floor 2) bounds)))
-    (loop for steps from 0 below (expt 10 9)
+    (loop for steps from 0 below (apply #'lcm bounds)
           for bots-step = bots then (mapcar (a:rcurry #'move-bot 1 bounds)
                                             bots-step)
-          when (= (mod steps (expt 10 4)) 0)
-            do (princ #\.)
           when (tree-pic? bots-step centers)
-            do (print-bots bots-step)
+            do (print-bots bots-step bounds)
             and return steps
           finally (return steps ))))
 
