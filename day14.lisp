@@ -128,6 +128,20 @@ v -> velocity")
       (format stream "~&~a~%" window)
       (setf window (make-array (first bounds) :element-type 'character :displaced-to array :displaced-index-offset (* line-offset (first bounds)))))))
 
+(defun bots-to-pbm (bots bounds &key (stream *standard-output*))
+  (let ((bot-array (make-array (reverse bounds) :initial-element nil)))
+    (dolist (bot bots)
+      (setf (apply #'aref bot-array (reverse (first bot))) t))
+    (format stream "P1~%~D ~D" (first bounds) (second bounds))
+    (loop for i from 0 below (second bounds) do
+      
+      (loop for j from 0 below (first bounds) do
+        (when (= 0 (mod j 70))
+          (terpri stream))
+        (format stream "~:[1~;0~]" (aref bot-array (- (second bounds) i 1) j ))))
+    ;(terpri stream)
+    ))
+
 (defun p2 (bots bounds)
   ;; "very rarely, (!)most(!) of the robots should arrange themselves into a picture of a Christmas tree"
   ;;find a picture of a christmas tree
