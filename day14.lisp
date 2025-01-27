@@ -154,15 +154,20 @@ v -> velocity")
   ;; -- -- don't think if you set x-bound to x-center each position will have (at least) 2 bots (don't think it will mirror)?
   ;; how many is "most"?
   ;; god, i hope the picture is centered!
+  ;; nope!
+  ;; answer for my input is 6587
+  ;; for my input, this can be found by searching for the lowest safety score from part 1
+  ;;   (meaning a large grouping in 1 quadrant)
   (let ((bot-count (length bots))
         (centers (mapcar (a:rcurry #'floor 2) bounds)))
     (loop for steps from 0 below (apply #'lcm bounds)
-          for bots-step = bots then (mapcar (a:rcurry #'move-bot 1 bounds)
-                                            bots-step)
-          when (tree-pic? bots-step centers)
-            do (print-bots bots-step bounds)
-            and return steps
-          finally (return steps ))))
+          for score = (apply #'* (p1 bots steps bounds))
+          for min-steps = steps then (if (< score min-score)
+                                         steps
+                                         min-steps)
+          for min-score = score then (min min-score score)
+          finally 
+             (return min-steps ))))
 
 (defun run (parts-list data bounds)
   (dolist (part (a:ensure-list parts-list))
