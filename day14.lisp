@@ -165,9 +165,16 @@ v -> velocity")
           for min-steps = steps then (if (< score min-score)
                                          steps
                                          min-steps)
-          for min-score = score then (min min-score score)
+          minimizing score into min-score
           finally 
              (return min-steps ))))
+
+(defun p2-without-loop (bots bounds)
+  (let* ((qscores  (mapcar (lambda (tick)
+                             (apply #'* (p1 bots tick bounds))) 
+                           (a:iota (apply #'lcm bounds))))
+         (min-scores (a:extremum qscores #'<)))
+    (position min-scores qscores)))
 
 (defun run (parts-list data bounds)
   (dolist (part (a:ensure-list parts-list))
