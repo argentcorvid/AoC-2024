@@ -1,4 +1,4 @@
-;;;dayx
+;;;2024 day x
 
 (eval-when (:compile-toplevel :load-toplevel)
   (ql:quickload '(:alexandria :str))
