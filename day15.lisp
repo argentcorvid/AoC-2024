@@ -4,7 +4,8 @@
   (ql:quickload '(:alexandria :str :defclass-std))
   (add-package-local-nickname 'a 'alexandria-2))
 
-(use-package :defclass-std)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (use-package :defclass-std))
 
 (defparameter *day-number* 15)
 (defparameter *input-name-template* "2024d~dinput.txt")
@@ -48,6 +49,21 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   '(or (integer 0 *)
     (complex (integer 0 *))))
 
+(deftype grid-direction ()
+  '(or (integer) (complex integer)))
+
+(deftype robot-command ()
+  '(and character (member #\^ #\> #\v #\<)))
+
+(defun robot-command-p (obj)
+  (typep obj 'robot-command))
+
+(defun grid-direction-p (obj)
+  (typep obj 'grid-direction))
+
+(defun grid-point-p (obj)
+  (typep obj 'grid-point))
+
 (defclass/std grid-object nil
   ((posn :ri :type grid-point :std #c(0 0))
    (fixed? solid? :r :std t)))
@@ -72,7 +88,22 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (pairlis (list #\^      #\>     #\v     #\<)
            (list #c(-1 0) #c(0 1) #c(1 0) #c(0 -1))))
 
-(defgeneric step-object (obj dir))
+(defgeneric step-object (obj dir) ;; :'( methods specialize on CLASS not TYPE 
+  (:documentation "move an object one step in the given direction")
+  (:method ((obj grid-object) towards)
+    "move the object one step towards the point given, uses signum of each part separately to ensure only full steps"
+    (when (robot-command-p towards)
+      (setf towards (cdr (assoc towards *directions*))))
+    (check-type towards grid-direction)
+    (if (fixed? obj)
+        (posn obj)
+        (incf (slot-value obj posn) (let ((r (signum (realpart towards)))
+                                          (c (signum (imagpart towards))))
+                                      (complex r c)))))
+  (:method ((obj crate) towards)
+    "checks in the given direction to see if blocked or more boxes. moves if possible")
+  (:method ((obj robot) towards)
+    "checks in the given direction to see if we are blocked and if we can push boxes, then moves"))
 
 (defun parse-input (stream)
   )
