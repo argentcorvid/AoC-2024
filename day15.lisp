@@ -45,6 +45,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 <^^>>>vv<v>>v<<")
 
+
+
 (deftype grid-point ()
   '(or (integer 0 *)
     (complex (integer 0 *))))
@@ -52,8 +54,11 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (deftype grid-direction ()
   '(or (integer) (complex integer)))
 
+(defvar valid-commands
+  (list #\^      #\>     #\v     #\<))
+
 (deftype robot-command ()
-  '(and character (member #\^ #\> #\v #\<)))
+  `(and character (member ,@valid-commands)))
 
 (defun robot-command-p (obj)
   (typep obj 'robot-command))
@@ -85,28 +90,65 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   ((grid-symbol :r :type character :std #\O)))
 
 (defparameter *directions*
-  (pairlis (list #\^      #\>     #\v     #\<)
+  (pairlis valid-commands
            (list #c(-1 0) #c(0 1) #c(1 0) #c(0 -1))))
+
+(defun dir-lookup (arrow-char)
+  (check-type arrow-char robot-command)
+  (cdr (assoc arrow-char *directions*)))
 
 (defgeneric step-object (obj dir) ;; :'( methods specialize on CLASS not TYPE 
   (:documentation "move an object one step in the given direction")
   (:method ((obj grid-object) towards)
     "move the object one step towards the point given, uses signum of each part separately to ensure only full steps"
     (when (robot-command-p towards)
-      (setf towards (cdr (assoc towards *directions*))))
+      (setf towards (dir-lookup towards)))
     (check-type towards grid-direction)
     (if (fixed? obj)
         (posn obj)
-        (incf (slot-value obj posn) (let ((r (signum (realpart towards)))
-                                          (c (signum (imagpart towards))))
-                                      (complex r c)))))
+        (incf (slot-value obj 'posn) (let ((r (signum (realpart towards)))
+                                           (c (signum (imagpart towards))))
+                                       (complex r c)))))
   (:method ((obj crate) towards)
     "checks in the given direction to see if blocked or more boxes. moves if possible")
   (:method ((obj robot) towards)
     "checks in the given direction to see if we are blocked and if we can push boxes, then moves"))
 
 (defun parse-input (stream)
-  )
+  (let ((warehouse (make-array 1 :adjustable t
+                                 :fill-pointer 0
+                                 :element-type 'grid-object
+                                 :initial-element (make-instance 'grid-wall)))
+        (commands (make-array 1 :adjustable t
+                                :fill-pointer 0
+                                :element-type 'character
+                                :initial-element #\<)))
+    (do* ((ch (read-char stream)
+              (read-char stream nil))
+          (col 0)
+          (row 0)
+          (nl? nil (char= ch #\newline)))
+         ((and nl? (char= #\newline (peek-char nil stream))))
+      (if nl?
+          (progn (incf row)
+                 (setf col 0))
+          (progn
+            (vector-push-extend
+             (make-instance (case ch
+                              (#\# 'grid-wall)
+                              (#\O 'crate)
+                              (#\. 'grid-floor)
+                              (#\@ 'robot))
+                            :posn (complex col row))
+             warehouse)
+            (incf col))))
+    (do* ((ch (read-char stream)
+              (read-char stream nil nil)))
+         ((null ch))
+      (when (graphic-char-p ch)
+        (vector-push-extend ch commands )))
+    (values warehouse
+            commands)))
 
 (defun p1 ()
   ) 
