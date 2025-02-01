@@ -54,8 +54,9 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (deftype grid-direction ()
   '(or (integer) (complex integer)))
 
-(defvar valid-commands
-  (list #\^      #\>     #\v     #\<))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter valid-commands
+    (list #\^      #\>     #\v     #\<)))
 
 (deftype robot-command ()
   `(and character (member ,@valid-commands)))
@@ -147,26 +148,38 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
          ((null ch))
       (when (graphic-char-p ch)
         (vector-push-extend ch commands )))
-    (values warehouse
-            commands)))
+    (rotatef (aref warehouse 0)
+             (aref warehouse (position-if #'robotp warehouse)))
+    (values warehouse commands)))
 
-(defun p1 ()
-  ) 
+(defun robotp (grid-obj) ;need?
+  (typep grid-obj 'robot))
 
-(defun p2 ()
+(defun cratep (grid-obj)
+  (typep grid-obj 'crate))
+
+(defun p1 (warehouse commands)
+  (loop with robot = (aref warehouse 0)
+        for cmd across commands
+        do (step-obj robot command))
+  (reduce #'gps (remove-if-not #'cratep warehouse))) 
+
+(defun p2 (warehouse commands)
   )
 
-(defun run (parts-list data)
+(defun run (parts-list warehouse commands)
   (dolist (part (a:ensure-list parts-list))
-    (ccase part
-      (1 (format t "~&Part 1: ~a" (p1 data)))
-      (2 (format t "~&Part 2: ~a" (p2 data))))))
+    (let ((warehouse (copy-seq warehouse))
+          (commands  (copy-seq commands)))
+     (ccase part
+       (1 (format t "~&Part 1: ~a" (p1 warehouse commands)))
+       (2 (format t "~&Part 2: ~a" (p2 warehouse commands)))))))
 
 (defun main (&rest parts)
-  (let* ((infile-name (format nil *input-name-template* *day-number*))
-         (input-lines (uiop:read-file-lines infile-name))
-         (data (parse-input input-lines)))
-    (run parts data)))
+  (let* ((infile-name (format nil *input-name-template* *day-number*)))
+    (multiple-value-call #'run parts
+      (with-open-file (data infile-name :direction :input)
+        (parse-input data)))))
 
 (defun test (&rest parts)
   (run parts (parse-input *test-input*)))
