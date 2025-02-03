@@ -70,19 +70,23 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defun grid-point-p (obj)
   (typep obj 'grid-point))
 
-(defclass/std grid-object nil
-  ((posn :ri :type grid-point :std #c(0 0))
-   (fixed? solid? :r :std t)))
+(class/std grid-object posn :ri :type grid-point :std #c(0 0))
 
-(defclass/std grid-wall (grid-object)
+(class/std fixed-object fixed? :r :std t)
+
+(class/std movable-object fixed? :r :std nil)
+
+(defclass/std fixed-grid-object (grid-object fixed-object) ())
+
+(defclass/std grid-wall (fixed-grid-object)
   ((grid-symbol :r :type character :std #\#)))
 
-(defclass/std grid-floor (grid-object)
+(defclass/std grid-floor (fixed-grid-object)
   ((solid? :r :std nil)
    (grid-symbol :r :type character :std #\.)))
 
-(defclass/std movable-grid-object (grid-object)
-  ((fixed? :r :std nil)))
+(defclass/std movable-grid-object (grid-object movable-object)
+  ((solid? :r :std t)))
 
 (defclass/std robot (movable-grid-object)
   ((grid-symbol :r :type character :std #\@)))
@@ -116,8 +120,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                                          (or (wallp cand)
                                              (cratep cand))))
                                   warehouse))
-         (walls-only (remove-if-not #'wallp all-obst))
-         (closest-wall (loop for w across walls-only
+         (closest-wall (loop for w across (remove-if-not #'wallp all-obst)
                              for wd = (absdist object w)
                              with mind = (length warehouse)
                              with closest-wall
@@ -125,10 +128,23 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                                do (setf mind wd
                                         closest-wall w)
                              finally (return closest-wall))))
-    (remove-if (lambda (obst)
-                 (< (absdist object closest-wall) (absdist object obst)))
-               all-obst)))
+    (sort (remove-if (lambda (obst)
+                       (< (absdist object closest-wall) (absdist object obst)))
+                     all-obst)
+          #'<
+          :key #'absdist)))
 
+(defmethod step-object ((o grid-object) (n grid-wall) w)
+  (declare (ignore o n w))
+  nil)
+
+(defmethod step-object ((object grid-object) (neighbor grid-floor) warehouse)
+  (rotatef (slot-value object 'posn) (slot-value neighbor 'posn))
+  t)
+
+(defmethod step-object ((robot robot) (neighbor crate) warehouse)
+  (let (obstacles (obstacle-check robot (- (posn neighbor) (posn robot)) warehouse))
+    ))  
 
 (defun move (object direction)
   (if (fixed? object)
@@ -139,38 +155,35 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
               (complex r c)))))
 
 (defun parse-input (stream)
-  (let ((warehouse (make-array 1 :adjustable t
-                                 :fill-pointer 0
-                                 :element-type 'grid-object
-                                 :initial-element (make-instance 'grid-wall)))
-        (commands (make-array 1 :adjustable t
-                                :fill-pointer 0
-                                :element-type 'character
-                                :initial-element #\<)))
-    (do* ((ch (read-char stream)
-              (read-char stream nil))
-          (col 0)
-          (row 0)
-          (nl? nil (char= ch #\newline)))
-         ((and nl? (char= #\newline (peek-char nil stream))))
-      (if nl?
-          (progn (incf row)
-                 (setf col 0))
-          (progn
-            (vector-push-extend
-             (make-instance (case ch
-                              (#\# 'grid-wall)
-                              (#\O 'crate)
-                              (#\. 'grid-floor)
-                              (#\@ 'robot))
-                            :posn (complex col row))
-             warehouse)
-            (incf col))))
-    (do* ((ch (read-char stream)
-              (read-char stream nil nil)))
-         ((null ch))
-      (when (graphic-char-p ch)
-        (vector-push-extend ch commands )))
+  (let ((warehouse (do* ((wh (list))
+                         (ch (read-char stream)
+                             (read-char stream nil))
+                         (col 0)
+                         (row 0)
+                         (nl? nil (char= ch #\newline)))
+                        ((and nl? (char= #\newline (peek-char nil stream)))
+                         (make-array (length wh) :element-type 'grid-object
+                                                 :initial-contents (nreverse wh)))
+                     (if nl?
+                         (progn (incf row)
+                                (setf col 0))
+                         (progn
+                           (push (make-instance (case ch
+                                                  (#\# 'grid-wall)
+                                                  (#\O 'crate)
+                                                  (#\. 'grid-floor)
+                                                  (#\@ 'robot))
+                                                :posn (complex col row))
+                                 wh)
+                           (incf col)))))
+        (commands (do* ((ch (read-char stream)
+                            (read-char stream nil nil))
+                        (cmds (list)))
+                       ((null ch)
+                        (make-array (length cmds) :element-type 'character
+                                                  :initial-contents (nreverse cmds)))
+                    (when (graphic-char-p ch)
+                      (push ch cmds )))))
     (rotatef (aref warehouse 0)
              (aref warehouse (position-if #'robotp warehouse)))
     (values warehouse commands)))
@@ -187,11 +200,21 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defun floorp (grid-obj)
   (typep grid-obj 'grid-floor))
 
+(defmethod gps ((crate crate))
+  (with-slots (posn) crate
+    (+ (* 100 (imagpart posn))
+       (realpart posn))))
+
+(defmethod gps ((obj grid-object))
+  (declare (ignore obj))
+  0)
+
 (defun p1 (warehouse commands)
   (loop with robot = (aref warehouse 0)
         for cmd across commands
-        do (step-obj robot command))
-  (reduce #'gps (remove-if-not #'cratep warehouse))) 
+        for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
+        do (step-object robot neighbor warehouse))
+  (reduce #'+ warehouse :key #'gps)) 
 
 (defun p2 (warehouse commands)
   )
