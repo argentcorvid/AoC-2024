@@ -98,22 +98,45 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (check-type arrow-char robot-command)
   (cdr (assoc arrow-char *directions*)))
 
-(defgeneric step-object (obj dir) ;; :'( methods specialize on CLASS not TYPE 
-  (:documentation "move an object one step in the given direction")
-  (:method ((obj grid-object) towards)
-    "move the object one step towards the point given, uses signum of each part separately to ensure only full steps"
-    (when (robot-command-p towards)
-      (setf towards (dir-lookup towards)))
-    (check-type towards grid-direction)
-    (if (fixed? obj)
-        (posn obj)
-        (incf (slot-value obj 'posn) (let ((r (signum (realpart towards)))
-                                           (c (signum (imagpart towards))))
-                                       (complex r c)))))
-  (:method ((obj crate) towards)
-    "checks in the given direction to see if blocked or more boxes. moves if possible")
-  (:method ((obj robot) towards)
-    "checks in the given direction to see if we are blocked and if we can push boxes, then moves"))
+(defun dist (obj-1 obj-2)
+  (- (posn obj-2) (posn obj-1)))
+
+(defun absdist (obj-1 obj-2)
+  (abs (dist obj-1 obj-2)))
+
+(defun obstacle-check (object direction warehouse)
+  "look in the given direction for objects that might get in the way, up to closest wall"
+  (when (robot-command-p direction)
+    (setf direction (dir-lookup direction)))
+  (check-type direction grid-direction)
+  (let* ((obj-pos  (posn object))
+         (all-obst (remove-if-not (lambda (cand)
+                                    (and (= (signum (dist obj cand))
+                                            direction)
+                                         (or (wallp cand)
+                                             (cratep cand))))
+                                  warehouse))
+         (walls-only (remove-if-not #'wallp all-obst))
+         (closest-wall (loop for w across walls-only
+                             for wd = (absdist obj w)
+                             with mind = (length warehouse)
+                             with closest-wall
+                             when (< wd mind)
+                               do (setf mind wd
+                                        closest-wall w)
+                             finally (return closest-wall))))
+    (remove-if (lambda (obst)
+                 (< (absdist obj closest-wall) (absdist obj obst)))
+               all-obst)))
+
+
+(defun move (object direction)
+  (if (fixed? object)
+      (posn object)
+      (incf (slot-value object 'posn)
+            (let ((r (signum (realpart direction)))
+                  (c (signum (imagpart direction))))
+              (complex r c)))))
 
 (defun parse-input (stream)
   (let ((warehouse (make-array 1 :adjustable t
@@ -138,7 +161,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
              (make-instance (case ch
                               (#\# 'grid-wall)
                               (#\O 'crate)
-                              (#\. 'grid-floor)
+                             ; (#\. 'grid-floor)
                               (#\@ 'robot))
                             :posn (complex col row))
              warehouse)
@@ -157,6 +180,12 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 (defun cratep (grid-obj)
   (typep grid-obj 'crate))
+
+(defun wallp (grid-obj)
+  (typep grid-obj 'grid-wall))
+
+(defun floorp (grid-obj)
+  (typep grid-obj 'grid-floor))
 
 (defun p1 (warehouse commands)
   (loop with robot = (aref warehouse 0)
