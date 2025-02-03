@@ -92,7 +92,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 (defparameter *directions*
   (pairlis valid-commands
-           (list #c(-1 0) #c(0 1) #c(1 0) #c(0 -1))))
+           (list #c(0 -1) #c(1 0) #c(0 1) #c(-1 0)))) ;#C(col,row)
 
 (defun dir-lookup (arrow-char)
   (check-type arrow-char robot-command)
@@ -111,14 +111,14 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (check-type direction grid-direction)
   (let* ((obj-pos  (posn object))
          (all-obst (remove-if-not (lambda (cand)
-                                    (and (= (signum (dist obj cand))
+                                    (and (= (signum (dist object cand))
                                             direction)
                                          (or (wallp cand)
                                              (cratep cand))))
                                   warehouse))
          (walls-only (remove-if-not #'wallp all-obst))
          (closest-wall (loop for w across walls-only
-                             for wd = (absdist obj w)
+                             for wd = (absdist object w)
                              with mind = (length warehouse)
                              with closest-wall
                              when (< wd mind)
@@ -126,7 +126,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                                         closest-wall w)
                              finally (return closest-wall))))
     (remove-if (lambda (obst)
-                 (< (absdist obj closest-wall) (absdist obj obst)))
+                 (< (absdist object closest-wall) (absdist object obst)))
                all-obst)))
 
 
@@ -161,7 +161,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
              (make-instance (case ch
                               (#\# 'grid-wall)
                               (#\O 'crate)
-                             ; (#\. 'grid-floor)
+                              (#\. 'grid-floor)
                               (#\@ 'robot))
                             :posn (complex col row))
              warehouse)
