@@ -132,27 +132,25 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                        (< (absdist object closest-wall) (absdist object obst)))
                      all-obst)
           #'<
-          :key #'absdist)))
+          :key (a:curry #'absdist object))))
 
-(defmethod step-object ((o grid-object) (n grid-wall) w)
+(defmethod step-object ((o grid-object) (n grid-wall) w) ; don't think this ever gets called? 
   (declare (ignore o n w))
   nil)
 
-(defmethod step-object ((object grid-object) (neighbor grid-floor) warehouse)
+(defmethod step-object ((object movable-grid-object) (neighbor grid-floor) warehouse)
   (rotatef (slot-value object 'posn) (slot-value neighbor 'posn))
-  t)
+  neighbor)
 
-(defmethod step-object ((robot robot) (neighbor crate) warehouse)
-  (let (obstacles (obstacle-check robot (- (posn neighbor) (posn robot)) warehouse))
-    ))  
-
-(defun move (object direction)
-  (if (fixed? object)
-      (posn object)
-      (incf (slot-value object 'posn)
-            (let ((r (signum (realpart direction)))
-                  (c (signum (imagpart direction))))
-              (complex r c)))))
+(defmethod step-object ((object movable-grid-object) (neighbor crate) warehouse)
+  (let* ((dir (- (posn neighbor) (posn object)))
+         (obstacles (obstacle-check object dir warehouse))
+         (empty (position-if #'floorp obstacles)))
+    (when empty
+      (let ((next (step-object neighbor (aref warehouse 1) obstacles)))
+        (rotatef (slot-value object 'posn)
+                 (slot-value next 'posn))
+        (return-from step-object next)))))  
 
 (defun parse-input (stream)
   (let ((warehouse (do* ((wh (list))
