@@ -45,7 +45,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 <^^>>>vv<v>>v<<")
 
-
+(defvar *debug*)
 
 (deftype grid-point ()
   '(or (integer 0 *)
@@ -118,7 +118,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                                     (and (= (signum (dist object cand))
                                             direction)
                                          (or (wallp cand)
-                                             (cratep cand))))
+                                             (cratep cand)
+                                             (floorp cand))))
                                   warehouse))
          (closest-wall (loop for w across (remove-if-not #'wallp all-obst)
                              for wd = (absdist object w)
@@ -147,10 +148,11 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
          (obstacles (obstacle-check object dir warehouse))
          (empty (position-if #'floorp obstacles)))
     (when empty
-      (let ((next (step-object neighbor (aref warehouse 1) obstacles)))
-        (rotatef (slot-value object 'posn)
-                 (slot-value next 'posn))
-        (return-from step-object next)))))
+      (let ((next (step-object neighbor (aref obstacles 1) (subseq obstacles 1))))
+        (rotatef (slot-value next 'posn)
+                 (slot-value neighbor 'posn)
+                 (slot-value object 'posn))
+        (return-from step-object neighbor)))))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
   (declare (special *debug*))
@@ -159,7 +161,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
     (format t "~&object: ~a location: ~a~%neighbor: ~a location: ~a"
             (grid-symbol object) (posn object)
             (grid-symbol neighbor) (posn neighbor))
-    (read-line))
+    (when (find #\q (read-line) :test #'char-equal)
+      (throw 'abort "aborted")))
  ; (call-next-method)
   )
 
@@ -220,15 +223,18 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 (defun p1 (warehouse commands)
   (declare (special *debug*))
-  (loop with robot = (aref warehouse 0)
-        for cmd across commands
-        for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
-        when *debug* do (format t "~&command: ~a" cmd)
-          do (step-object robot neighbor warehouse))
-  (reduce #'+ warehouse :key #'gps)) 
+  (catch 'abort
+    (loop with robot = (aref warehouse 0)
+          for cmd across commands
+          for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
+          when *debug* do (format t "~&command: ~a" cmd)
+            do (step-object robot neighbor warehouse))
+    (reduce #'+ warehouse :key #'gps))) 
 
 (defun p2 (warehouse commands)
-  )
+  (declare (special *debug*))
+  (catch 'abort
+    ))
 
 (defun run (parts-list warehouse commands)
   (dolist (part (a:ensure-list parts-list))
