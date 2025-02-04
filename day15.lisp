@@ -134,8 +134,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
           #'<
           :key (a:curry #'absdist object))))
 
-(defmethod step-object ((o grid-object) (n grid-wall) w) ; don't think this ever gets called? 
-  (declare (ignore o n w))
+(defmethod step-object ((object grid-object) (neighbor grid-wall) warehouse) ; don't think this ever gets called? 
+  (declare (ignore object neighbor warehouse))
   nil)
 
 (defmethod step-object ((object movable-grid-object) (neighbor grid-floor) warehouse)
@@ -150,7 +150,18 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
       (let ((next (step-object neighbor (aref warehouse 1) obstacles)))
         (rotatef (slot-value object 'posn)
                  (slot-value next 'posn))
-        (return-from step-object next)))))  
+        (return-from step-object next)))))
+
+(defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
+  (declare (special *debug*))
+  (when (and (boundp *debug*)
+             *debug*)
+    (format t "~&object: ~a location: ~a~%neighbor: ~a location: ~a"
+            (grid-symbol object) (posn object)
+            (grid-symbol neighbor) (posn neighbor))
+    (read-line))
+ ; (call-next-method)
+  )
 
 (defun parse-input (stream)
   (let ((warehouse (do* ((wh (list))
@@ -208,10 +219,12 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   0)
 
 (defun p1 (warehouse commands)
+  (declare (special *debug*))
   (loop with robot = (aref warehouse 0)
         for cmd across commands
         for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
-        do (step-object robot neighbor warehouse))
+        when *debug* do (format t "~&command: ~a" cmd)
+          do (step-object robot neighbor warehouse))
   (reduce #'+ warehouse :key #'gps)) 
 
 (defun p2 (warehouse commands)
