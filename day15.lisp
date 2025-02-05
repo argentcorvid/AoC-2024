@@ -260,4 +260,9 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (parse-input data)))))
 
 (defun test (&rest parts)
-  (run parts (parse-input *test-input*)))
+  (map nil (lambda (ip)
+          (multiple-value-call #'run parts
+            (with-input-from-string (s ip)
+              (parse-input s))))
+        (mapcar #'symbol-value
+                '(*small-test-input* *big-test-input*))))
