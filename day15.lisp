@@ -45,7 +45,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 <^^>>>vv<v>>v<<")
 
-(defvar *debug*)
+(defvar *debug* nil)
 
 (deftype grid-point ()
   '(or (integer 0 *)
@@ -150,7 +150,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
     (when empty
       (let ((next (step-object neighbor (aref obstacles 1) obstacles))
             (op (posn object)))
-        (rotatef (slot-value object 'posn) (slot-value neighbor 'posn) (slot-value next 'posn))
+        (rotatef (slot-value neighbor 'posn) (slot-value next 'posn))
+        (rotatef (slot-value object 'posn) (slot-value neighbor 'posn))
         (return-from step-object next)))))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
