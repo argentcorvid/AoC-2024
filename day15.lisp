@@ -166,8 +166,13 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
   (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
       (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
-      (let ((other-half (find () warehouse)))
-        ;; moving vertically, move the smallest distance possible for either half.
+      (let* ((other-half (find (if (typep neighbor 'big-crate-l)
+                                   (+ (posn neighbor) 1)
+                                   (+ (posn neighbor) -1))
+                               warehouse :key #'posn)))
+        
+        
+        ;; moving vertically, move the smallest distance possible for either half. (DFS?)
         ;; then, move the other half.
         )))
 
