@@ -46,6 +46,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 <^^>>>vv<v>>v<<")
 
 (defvar *debug* nil)
+(defvar *warehouse-size* (list 0 0))
 
 (deftype grid-point ()
   '(or (integer 0 *)
@@ -155,10 +156,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (return-from step-object next)))))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
-  (declare (special *debug*))
-  (when (and (boundp *debug*)
-             *debug*)
-    (dump-wh warehouse 8 8) ;only for small test, obviously
+  (when *debug*
+    (apply #'dump-wh warehouse *warehouse-size*)
     (break))
  ; (call-next-method)
   )
@@ -183,6 +182,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                          (row 0)
                          (nl? nil (char= ch #\newline)))
                         ((and nl? (char= #\newline (peek-char nil stream)))
+                         (setf *warehouse-size* (list col (1+ row)))
                          (make-array (length wh) :element-type 'grid-object
                                                  :initial-contents (nreverse wh)))
                      (if nl?
@@ -231,19 +231,22 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   0)
 
 (defun p1 (warehouse commands)
-  (declare (special *debug*))
-  (catch 'abort
-    (loop with robot = (aref warehouse 0)
-          for cmd across commands
-          for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
-          when *debug* do (format t "~&command: ~a" cmd)
-            do (step-object robot neighbor warehouse))
-    (reduce #'+ warehouse :key #'gps))) 
+  (loop with robot = (aref warehouse 0)
+        for cmd across commands
+        for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
+        when *debug* do (format t "~&command: ~a" cmd)
+          do (step-object robot neighbor warehouse))
+  (reduce #'+ warehouse :key #'gps)) 
 
 (defun p2 (warehouse commands)
-  (declare (special *debug*))
-  (catch 'abort
-    ))
+  (let (warehouse )
+    (loop with warehouse = (inflate-warehouse warehouse)
+          with robot = (aref warehouse 0)
+          for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
+          when *debug* do (format t "~&command: ~a" cmd)
+            do (step-object-p2 robot neighbor warehouse))
+    (reduce #'+ warehouse :key #'gps-p2   ;?
+            )))
 
 (defun run (parts-list warehouse commands)
   (dolist (part (a:ensure-list parts-list))
@@ -264,5 +267,4 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
           (multiple-value-call #'run parts
             (with-input-from-string (s ip)
               (parse-input s))))
-        (mapcar #'symbol-value
-                '(*small-test-input* *big-test-input*))))
+        (list *small-test-input* *big-test-input*)))
