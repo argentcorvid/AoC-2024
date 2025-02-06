@@ -95,6 +95,15 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defclass/std crate (movable-grid-object)
   ((grid-symbol :r :type character :std #\O)))
 
+(defclass/std big-crate (movable-grid object)
+  nil)
+
+(defclass/std big-crate-l (big-crate)
+  ((grid-symbol :r :type character :std #\[)))
+
+(defclass/std big-crate-r (big-crate)
+  ((grid-symbol :r :type character :std #\])))
+
 (defparameter *directions*
   (pairlis valid-commands
            (list #c(0 -1) #c(1 0) #c(0 1) #c(-1 0)))) ;#C(col,row)
@@ -244,7 +253,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
           with robot = (aref warehouse 0)
           for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
           when *debug* do (format t "~&command: ~a" cmd)
-            do (step-object-p2 robot neighbor warehouse))
+            do (step-object robot neighbor warehouse))
     (reduce #'+ warehouse :key #'gps-p2   ;?
             )))
 
