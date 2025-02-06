@@ -95,7 +95,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defclass/std crate (movable-grid-object)
   ((grid-symbol :r :type character :std #\O)))
 
-(defclass/std big-crate (movable-grid object)
+(defclass/std big-crate (movable-grid-object)
   nil)
 
 (defclass/std big-crate-l (big-crate)
@@ -235,9 +235,35 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
     (+ (* 100 (imagpart posn))
        (realpart posn))))
 
+(defmethod gps ((crate big-crate-l))
+  (with-slots (posn) crate
+    (+ (* 100 (imagpart posn))
+       (realpart posn))))
+
 (defmethod gps ((obj grid-object))
   (declare (ignore obj))
   0)
+
+(defun inflate-warehouse (warehouse)
+  (loop for blk across warehouse
+        with new-wh = (make-array (* 2 (length warehouse))
+                                  :fill-pointer 0
+                                  :element-type 'grid-object
+                                  :initial-element (make-instance 'grid-floor))
+        do (let* ((pos (posn blk))
+                  (new-pos (complex (* 2 (realpart pos))
+                                    (imagpart pos))))
+             (etypecase blk
+               (robot
+                (vector-push (make-instance 'robot :posn new-pos) new-wh)
+                (vector-push (make-instance 'grid-floor :posn (1+ new-pos)) new-wh))
+               ((or grid-wall grid-floor)
+                (dotimes (i 2)
+                  (vector-push (make-instance (class-of blk) :posn (+ i new-pos)) new-wh)))
+               (crate
+                (vector-push (make-instance 'big-crate-l :posn new-pos) new-wh)
+                (vector-push (make-instance 'big-crate-r :posn (1+ new-pos)) new-wh))))
+        finally (return new-wh)))
 
 (defun p1 (warehouse commands)
   (loop with robot = (aref warehouse 0)
@@ -247,23 +273,15 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
           do (step-object robot neighbor warehouse))
   (reduce #'+ warehouse :key #'gps)) 
 
-(defun p2 (warehouse commands)
-  (let (warehouse )
-    (loop with warehouse = (inflate-warehouse warehouse)
-          with robot = (aref warehouse 0)
-          for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
-          when *debug* do (format t "~&command: ~a" cmd)
-            do (step-object robot neighbor warehouse))
-    (reduce #'+ warehouse :key #'gps-p2   ;?
-            )))
-
 (defun run (parts-list warehouse commands)
   (dolist (part (a:ensure-list parts-list))
     (let ((warehouse (copy-seq warehouse))
           (commands  (copy-seq commands)))
      (ccase part
        (1 (format t "~&Part 1: ~a" (p1 warehouse commands)))
-       (2 (format t "~&Part 2: ~a" (p2 warehouse commands)))))))
+       (2 (let ((*warehouse-size* (list (first *warehouse-size*)
+                                        (* 2 (second *warehouse-size*)))))
+            (format t "~&Part 2: ~a" (p1 (inflate-warehouse warehouse) commands))))))))
 
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*)))
