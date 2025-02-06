@@ -95,7 +95,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 (defclass/std crate (movable-grid-object)
   ((grid-symbol :r :type character :std #\O)))
 
-(defclass/std big-crate (movable-grid-object)
+(defclass/std big-crate (crate)
   nil)
 
 (defclass/std big-crate-l (big-crate)
@@ -163,12 +163,18 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (rotatef (slot-value object 'posn) (slot-value next 'posn))
         (return-from step-object next)))))
 
+(defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
+  (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
+      (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
+      (let ((other-half (find () warehouse)))
+        ;; moving vertically, move the smallest distance possible for either half.
+        ;; then, move the other half.
+        )))
+
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
   (when *debug*
     (apply #'dump-wh warehouse *warehouse-size*)
-    (break))
- ; (call-next-method)
-  )
+    (break)))
 
 (defun dump-wh (warehouse rows cols)
   (let ((2dwh (make-array (list rows cols))))
@@ -228,6 +234,9 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 (defun floorp (grid-obj)
   (typep grid-obj 'grid-floor))
+
+(defun big-crate-p (grid-obj)
+  (typep grid-obj 'big-crate))
 
 (defmethod gps ((crate crate))
   (with-slots (posn) crate
