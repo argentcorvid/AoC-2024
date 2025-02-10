@@ -150,10 +150,12 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   nil)
 
 (defmethod step-object ((object movable-grid-object) (neighbor grid-floor) warehouse)
+  "swap the positions of a movable object and an empty floor space. returns the object for the floor space"
   (rotatef (slot-value object 'posn) (slot-value neighbor 'posn))
   neighbor)
 
 (defmethod step-object ((object grid-object) (neighbor crate) warehouse)
+  "swap the positions of a movable object and a crate, if possible. returns the object of the space the crate moved to, or nil if no move"
   (let* ((dir (- (posn neighbor) (posn object)))
          (obstacles (obstacle-check object dir warehouse))
          (empty (position-if #'floorp obstacles)))
@@ -164,16 +166,26 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (return-from step-object next)))))
 
 (defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
+  "push a big-crate. if horizontal move, defers to the regular crate method. if vertical, moves both halves, and any other crates in the way if possible."
   (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
       (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
+      ;; moving vertically, move the smallest distance possible for either half. (DFS?)
+      ;; then, move the other half.
       (let* ((other-half (find (if (typep neighbor 'big-crate-l)
                                    (+ (posn neighbor) 1)
                                    (+ (posn neighbor) -1))
-                               warehouse :key #'posn)))
-        
-        
-        ;; moving vertically, move the smallest distance possible for either half. (DFS?)
-        ;; then, move the other half.
+                               warehouse :key #'posn))
+             (dir (- (posn neighbor) (posn object)))
+             (obstacles-a (obstacle-check object dir warehouse))
+             (obstacles-b (obstacle-check other-half dir warehouse))
+             (clear-a (position-if #'floorp obstacles-a))
+             (clear-b (position-if #'floorp obstacles-b)))
+        (when (and clear-a clear-b)
+          (let ((next-a (step-object neighbor (aref obstacles-a 1) warehouse))
+                (next-b (step-object (aref obstacles-b 0) (aref obstacles-b 1) warehouse)))
+            (rotatef (slot-value object 'posn) (slot-value next-a 'posn))
+            (rotatef (slot-value other-half 'posn) (slot-value next-b 'posn))
+            (return-from step-object next-a)))
         )))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
@@ -249,9 +261,11 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
        (realpart posn))))
 
 (defmethod gps ((crate big-crate-l))
-  (with-slots (posn) crate
-    (+ (* 100 (imagpart posn))
-       (realpart posn))))
+  (call-next-method))
+
+(defmethod gps ((obj big-crate-r))
+  (declare (ignore obj))
+  0)
 
 (defmethod gps ((obj grid-object))
   (declare (ignore obj))
@@ -282,8 +296,9 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (loop with robot = (aref warehouse 0)
         for cmd across commands
         for neighbor = (find (+ (posn robot) (dir-lookup cmd)) warehouse :key #'posn)
-        when *debug* do (format t "~&command: ~a" cmd)
-          do (step-object robot neighbor warehouse))
+        when *debug*
+          do (format t "~&command: ~a" cmd)
+        do (step-object robot neighbor warehouse))
   (reduce #'+ warehouse :key #'gps)) 
 
 (defun run (parts-list warehouse commands)
@@ -304,7 +319,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 (defun test (&rest parts)
   (map nil (lambda (ip)
-          (multiple-value-call #'run parts
-            (with-input-from-string (s ip)
-              (parse-input s))))
-        (list *small-test-input* *big-test-input*)))
+             (multiple-value-call #'run parts
+               (with-input-from-string (s ip)
+                 (parse-input s))))
+       (list *small-test-input* *big-test-input*)))
