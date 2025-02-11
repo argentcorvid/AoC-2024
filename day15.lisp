@@ -45,6 +45,42 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 <^^>>>vv<v>>v<<")
 
+(defparameter *tiny-test-input-yes-1*
+  "#####
+#...#
+#.O.#
+#.O.#
+#.@.#
+
+^")
+
+(defparameter *tiny-test-input-yes-2*
+"##########
+##......##
+##.[][].##
+##..[]..##
+##..@...##
+
+^")
+
+(defparameter *tiny-test-input-no-1*
+"##########
+##..##...##
+##.[][].##
+##..[]..##
+##..@...##
+
+^")
+
+(defparameter *tiny-test-input-no-2*
+"##########
+####....##
+##.[][].##
+##..[]..##
+##..@...##
+
+^")
+
 (defvar *debug* nil)
 (defvar *warehouse-size* (list 0 0))
 
@@ -165,29 +201,28 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (rotatef (slot-value object 'posn) (slot-value next 'posn))
         (return-from step-object next)))))
 
-(let ((big-crate-stack (list)))
- (defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
-   "push a big-crate. if horizontal move, defers to the regular crate method. if vertical, moves both halves, and any other crates in the way if possible."
-   (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
-       (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
-       ;; moving vertically, move the smallest distance possible for either half. (DFS?)
-       ;; then, move the other half.
-       (let* ((other-half (find (if (typep neighbor 'big-crate-l)
-                                    (+ (posn neighbor) 1)
-                                    (+ (posn neighbor) -1))
-                                warehouse :key #'posn))
-              (dir (- (posn neighbor) (posn object)))
-              (obstacles-a (obstacle-check object dir warehouse))
-              (obstacles-b (obstacle-check other-half dir warehouse))
-              (clear-a (position-if #'floorp obstacles-a))
-              (clear-b (position-if #'floorp obstacles-b)))
-         (when (and clear-a clear-b)
-           (let ((next-a (step-object neighbor (aref obstacles-a 1) warehouse))
-                 (next-b (step-object (aref obstacles-b 0) (aref obstacles-b 1) warehouse)))
-             (rotatef (slot-value object 'posn) (slot-value next-a 'posn))
-             (rotatef (slot-value other-half 'posn) (slot-value next-b 'posn))
-             (return-from step-object next-a)))
-         ))))
+(defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
+  "push a big-crate. if horizontal move, defers to the regular crate method. if vertical, moves both halves, and any other crates in the way if possible."
+  (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
+      (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
+      ;; moving vertically, move the smallest distance possible for either half. (DFS?)
+      ;;- then, move the other half.
+      (let* ((other-half (find (if (typep neighbor 'big-crate-l)
+                                   (+ (posn neighbor) 1)
+                                   (+ (posn neighbor) -1))
+                               warehouse :key #'posn))
+             (dir (- (posn neighbor) (posn object)))
+             (obstacles-a (obstacle-check object dir warehouse))
+             (obstacles-b (obstacle-check other-half dir warehouse))
+             (clear-a (find-if #'floorp obstacles-a))
+             (clear-b (find-if #'floorp obstacles-b)))
+        (when (and clear-a clear-b)
+          (let ((next-a (step-object neighbor (aref obstacles-a 1) warehouse))
+                (next-b (step-object (aref obstacles-b 0) (aref obstacles-b 1) warehouse)))
+            (rotatef (slot-value object 'posn) (slot-value next-a 'posn))
+            (rotatef (slot-value other-half 'posn) (slot-value next-b 'posn))
+            (return-from step-object next-a)))
+        )))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
   (when *debug*
@@ -224,6 +259,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                            (push (make-instance (case ch
                                                   (#\# 'grid-wall)
                                                   (#\O 'crate)
+                                                  (#\[ 'big-crate-l)
+                                                  (#\] 'big-crate-r)
                                                   (#\. 'grid-floor)
                                                   (#\@ 'robot))
                                                 :posn (complex col row))
