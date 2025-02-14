@@ -353,7 +353,9 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                (crate
                 (vector-push (make-instance 'big-crate-l :posn new-pos) new-wh)
                 (vector-push (make-instance 'big-crate-r :posn (1+ new-pos)) new-wh))))
-        finally (return new-wh)))
+        finally
+           (incf (second *warehouse-size*) (second *warehouse-size*))
+           (return new-wh)))
 
 (defun p1 (warehouse commands)
   (loop with robot = (aref warehouse 0)
@@ -368,11 +370,12 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (dolist (part (a:ensure-list parts-list))
     (let ((warehouse (copy-seq warehouse))
           (commands  (copy-seq commands)))
-     (ccase part
-       (1 (format t "~&Part 1: ~a" (p1 warehouse commands)))
-       (2 (let ((*warehouse-size* (list (first *warehouse-size*)
-                                        (* 2 (second *warehouse-size*)))))
-            (format t "~&Part 2: ~a" (p1 (inflate-warehouse warehouse) commands))))))))
+      (ccase part
+        (1 (format t "~&Part 1: ~a" (p1 warehouse commands)))
+        (2
+         (setf warehouse (inflate-warehouse warehouse))
+         (format t "~&Part 2: ~a" (p1 warehouse  commands))))
+      (apply #'dump-wh warehouse *warehouse-size*))))
 
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*)))
