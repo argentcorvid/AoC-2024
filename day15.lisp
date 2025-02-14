@@ -240,7 +240,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
             (when (notany (lambda (itm)
                               (let ((next (next-in-dir itm)))
                                   (wallp next)))
-                          obstacles)
+                          (remove-if-not #'movable? obstacles))
               (s:do-each (column (s:assort obstacles :key (a:compose #'realpart #'posn))
                                  (rotatef (slot-value object 'posn)
                                           (slot-value (next-in-dir object) 'posn))) ;move robot into empty floor position
