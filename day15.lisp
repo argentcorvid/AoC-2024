@@ -197,9 +197,10 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
          (obstacles (obstacle-check object dir warehouse))
          (empty (find-if #'floorp obstacles)))
     (when empty
-      (rotatef (slot-value (elt obstacles 1) 'posn) (slot-value empty 'posn))
-      (rotatef (slot-value object 'posn) (slot-value (elt obstacles 1) 'posn))
-      (return-from step-object (elt obstacles 1)))))
+      ;(break)
+      (rotatef (slot-value (elt obstacles 0) 'posn) (slot-value empty 'posn))
+      (rotatef (slot-value object 'posn) (slot-value empty 'posn))
+      (return-from step-object empty))))
 
 (defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
   "push a big-crate. if horizontal move, defers to the regular crate method. if vertical, moves both halves, and any other crates in the way if possible."
