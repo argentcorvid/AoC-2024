@@ -46,6 +46,17 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
 
 <^^>>>vv<v>>v<<")
 
+(defparameter *p2-small-test-input*
+  "#######
+#...#.#
+#.....#
+#..OO@#
+#..O..#
+#.....#
+#######
+
+<vv<<^^<<^^")
+
 (defparameter *tiny-test-input-yes-1*
   "#####
 #...#
@@ -196,20 +207,25 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (let* ((dir (- (posn neighbor) (posn object)))
          (obstacles (obstacle-check object dir warehouse))
          (empty (find-if #'floorp obstacles)))
+    ;; (when empty
+    ;;   ;(break)
+    ;;   (rotatef (slot-value (elt obstacles 0) 'posn) (slot-value empty 'posn))
+    ;;   (rotatef (slot-value object 'posn) (slot-value empty 'posn))
+    ;;   (return-from step-object empty))
     (when empty
-      ;(break)
-      (rotatef (slot-value (elt obstacles 0) 'posn) (slot-value empty 'posn))
-      (rotatef (slot-value object 'posn) (slot-value empty 'posn))
-      (return-from step-object empty))))
+      (let* ((next (step-object neighbor (aref obstacles 1) obstacles)))
+        (rotatef (slot-value object 'posn) (slot-value next 'posn))
+        (return-from step-object next)))))
 
 (defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
-  "push a big-crate. if horizontal move, defers to the regular crate method. if vertical, moves both halves, and any other crates in the way if possible."
-  (if (= (imagpart (posn object)) (imagpart (posn neighbor)))
-      (return-from step-object (call-next-method)) ;;horizontal move, treat other half like any other crate.
-      ;; moving vertically, move the smallest distance possible for either half. (DFS?)
-      ;;- then, move the other half.
-      (let ((dir (- (posn neighbor) (posn object))))
+  "push a big-crate. if vertical, moves both halves, and any other crates in the way if possible. if horizontal, treats them as any other crate."
+  (let ((dir (- (posn neighbor) (posn object))))
+    (if (= (imagpart (posn object)) (imagpart (posn neighbor))) ; if on same row,
+        ;; then horziontal move, recursively push objects into the empty space (keeps correct order of l/r halves)
+        (call-next-method)
+        ;; else moving vertically. look vertically for at least one empty space between crates and wall.
         (labels ((p2-obstacles (start-object)
+                   "Iterative BFS for spaces of interest in the travel direction, up to nearest wall"
                    (do* ((visited-pts (list) (pushnew current-pt visited-pts :test #'equal))
                          (not-visited (list) (delete-if (lambda (itm)
                                                           (member itm visited-pts :test #'equal))
@@ -223,6 +239,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                                               (absdist j start-object)))
                                  'vector))))
                  (neighbor-fn (itm)
+                   "returns list of 'valid' neighbors if the given item."
                    (unless (wallp itm) 
                      (if (typep itm 'big-crate)
                          (let ((other-half (find (+ (posn itm) (if (typep itm 'big-crate-l)
@@ -236,18 +253,19 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
                         (floorp (next-in-dir itm))))
                  (next-in-dir (itm)
                    (find (+ (posn itm) dir) warehouse :key #'posn)))
-          (let* ((obstacles (p2-obstacles neighbor)))
-            (when (notany (lambda (itm)
-                              (let ((next (next-in-dir itm)))
-                                  (wallp next)))
-                          (remove-if-not #'movable? obstacles))
-              (s:do-each (column (s:assort obstacles :key (a:compose #'realpart #'posn))
-                                 (rotatef (slot-value object 'posn)
-                                          (slot-value (next-in-dir object) 'posn))) ;move robot into empty floor position
-                (break)
-                (if (cratep (elt column 0))
-                    (rotatef (slot-value (elt column 0) 'posn) (slot-value (find-if #'floorp column) 'posn))
-                    (rotatef (slot-value (elt column 1) 'posn) (slot-value (find-if #'floorp column) 'posn))))))))))
+          (let* ((obstacles (p2-obstacles neighbor))
+                 (columns (s:assort obstacles :key (a:compose #'realpart #'posn))))
+            (when (every (lambda (c)
+                           (find-if #'floorp c))
+                         columns)
+              (s:do-each (column columns
+                                 (next-in-dir object)) ;move robot into empty floor position
+                ;(rotatef (slot-value (elt column 0) 'posn) (slot-value (find-if #'floorp column) 'posn)) ; BOTH wrong!
+                ;(rotatef (slot-value (elt column 1) 'posn) (slot-value (find-if #'floorp column) 'posn))
+                ;(call-next-method (elt column 1) (elt column 2) warehouse)
+                ;; (let ((next (step-object (elt column 0) (elt column 1) warehouse)))
+                ;;   (rotatef (slot-value object 'posn) (slot-value next 'posn)))
+                )))))))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
   (when *debug*
@@ -335,6 +353,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   0)
 
 (defun inflate-warehouse (warehouse)
+  (when (find-if #'big-crate-p warehouse)
+    (error "Trying to inflate an already-inflated warehouse!"))
   (loop for blk across warehouse
         with new-wh = (make-array (* 2 (length warehouse))
                                   :fill-pointer 0
@@ -375,7 +395,8 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (2
          (setf warehouse (inflate-warehouse warehouse))
          (format t "~&Part 2: ~a" (p1 warehouse  commands))))
-      (apply #'dump-wh warehouse *warehouse-size*))))
+      (apply #'dump-wh warehouse *warehouse-size*)
+      (terpri))))
 
 (defun main (&rest parts)
   (let* ((infile-name (format nil *input-name-template* *day-number*)))
@@ -384,8 +405,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
         (parse-input data)))))
 
 (defun test (&rest parts)
-  (map nil (lambda (ip)
-             (multiple-value-call #'run parts
-               (with-input-from-string (s ip)
-                 (parse-input s))))
-       (list *small-test-input* *big-test-input*)))
+  (dolist (ip (list *small-test-input* *p2-small-test-input* *big-test-input*))
+    (multiple-value-call #'run parts
+      (with-input-from-string (s ip)
+        (parse-input s)))))
