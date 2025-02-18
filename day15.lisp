@@ -194,7 +194,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
           :key (a:curry #'absdist object))))
 
 (defmethod step-object ((object grid-object) (neighbor grid-wall) warehouse) ; don't think this ever gets called? 
-  (declare (ignore object neighbor warehouse))
+  (declare (ignore neighbor warehouse))
   nil)
 
 (defmethod step-object ((object movable-grid-object) (neighbor grid-floor) warehouse)
@@ -202,7 +202,7 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
   (rotatef (slot-value object 'posn) (slot-value neighbor 'posn))
   neighbor)
 
-(defmethod step-object ((object grid-object) (neighbor crate) warehouse)
+(defmethod step-object ((object movable-grid-object) (neighbor crate) warehouse)
   "swap the positions of a movable object and a crate, if possible. returns the object of the space the crate moved to, or nil if no move"
   (let* ((dir (- (posn neighbor) (posn object)))
          (obstacles (obstacle-check object dir warehouse))
@@ -212,12 +212,22 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
     ;;   (rotatef (slot-value (elt obstacles 0) 'posn) (slot-value empty 'posn))
     ;;   (rotatef (slot-value object 'posn) (slot-value empty 'posn))
     ;;   (return-from step-object empty))
+    ;; (when empty
+    ;;   (let* ((next (step-object neighbor (aref obstacles 1) obstacles)))
+    ;;     (rotatef (slot-value object 'posn) (slot-value next 'posn))
+    ;;     (return-from step-object next)))
     (when empty
-      (let* ((next (step-object neighbor (aref obstacles 1) obstacles)))
-        (rotatef (slot-value object 'posn) (slot-value next 'posn))
-        (return-from step-object next)))))
+      (let ((first-pos (posn (elt obstacles 0))))
+        (map nil (lambda (obj)
+                   (when (typep obj 'movable-grid-object)
+                     (incf (slot-value obj 'posn) dir)))
+             obstacles)
+        (setf (slot-value empty 'posn) first-pos))
+      (rotatef (slot-value object 'posn)
+               (slot-value empty 'posn))
+      (return-from step-object empty))))
 
-(defmethod step-object ((object grid-object) (neighbor big-crate) warehouse)
+(defmethod step-object ((object movable-grid-object) (neighbor big-crate) warehouse)
   "push a big-crate. if vertical, moves both halves, and any other crates in the way if possible. if horizontal, treats them as any other crate."
   (let ((dir (- (posn neighbor) (posn object))))
     (if (= (imagpart (posn object)) (imagpart (posn neighbor))) ; if on same row,
@@ -258,14 +268,27 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^")
             (when (every (lambda (c)
                            (find-if #'floorp c))
                          columns)
-              (s:do-each (column columns
-                                 (next-in-dir object)) ;move robot into empty floor position
-                ;(rotatef (slot-value (elt column 0) 'posn) (slot-value (find-if #'floorp column) 'posn)) ; BOTH wrong!
-                ;(rotatef (slot-value (elt column 1) 'posn) (slot-value (find-if #'floorp column) 'posn))
-                ;(call-next-method (elt column 1) (elt column 2) warehouse)
-                ;; (let ((next (step-object (elt column 0) (elt column 1) warehouse)))
+              (s:do-each (column columns) 
+                ;;(rotatef (slot-value (elt column 0) 'posn)
+                ;;         (slot-value (find-if #'floorp column) 'posn)) ;WRONG
+                ;;(rotatef (slot-value (elt column 1) 'posn)
+                ;;         (slot-value (find-if #'floorp column) 'posn)) ;WRONG
+                (call-next-method (elt column 0) (elt column 1) column)
+                ;; (let ((next (step-object (elt column 0) (elt column 1) warehouse))) ;WRONG
                 ;;   (rotatef (slot-value object 'posn) (slot-value next 'posn)))
-                )))))))
+                ;; (let ((empty (find-if #'floorp column))
+                ;;       (first-pos (posn (elt column 0))))
+                ;;   (break)
+                ;;   (map nil (lambda (obj)
+                ;;              (when (typep obj 'movable-grid-object)
+                ;;                (incf (slot-value obj 'posn) dir)))
+                ;;        column)
+                ;;   (setf (slot-value empty 'posn) first-pos))
+                )
+              (let ((next (next-in-dir object)))
+                (rotatef (slot-value object 'posn)
+                         (slot-value next 'posn))
+                (return-from step-object next))))))))
 
 (defmethod step-object :before ((object grid-object) (neighbor grid-object) warehouse)
   (when *debug*
